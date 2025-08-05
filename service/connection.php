@@ -2,7 +2,7 @@
 $server_name = 'localhost';
 $username = 'root';
 $password = '';
-$database = "kasir";
+$database = "medipos";
 
 // Create connection with error handling
 try {

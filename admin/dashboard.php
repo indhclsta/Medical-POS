@@ -21,7 +21,7 @@ $admin = mysqli_fetch_assoc($query);
 
 // Set variables
 $username = $admin['username'];
-$image = !empty($admin['image']) ? 'uploads/' . $admin['image'] : 'default.jpg';
+$image = !empty($admin['../image']) ? '../uploads/' . $admin['../image'] : 'default.jpg';
 
 // Queries for statistics
 $total_admin_query = mysqli_query($conn, "SELECT COUNT(*) as total FROM admin");
@@ -110,7 +110,7 @@ while ($row = mysqli_fetch_assoc($recent_logs_query)) {
             </div>
 
             <nav class="mt-8">
-                <a href="super_dashboard.php" class="flex items-center px-4 py-3 rounded-lg nav-active">
+                <a href="dashboard.php" class="flex items-center px-4 py-3 rounded-lg nav-active">
                     <i class="fas fa-tachometer-alt mr-3"></i>
                     Dashboard
                 </a>
@@ -157,7 +157,9 @@ while ($row = mysqli_fetch_assoc($recent_logs_query)) {
                     <div class="flex items-center space-x-4">
                         <span class="text-sm text-gray-500" id="currentDateTime"></span>
                         <div class="relative">
-                            <img src="<?= htmlspecialchars($image) ?>" alt="Profile" class="w-8 h-8 rounded-full border-2 border-purple-500">
+                            <img src="../uploads/<?= htmlspecialchars($admin_data['image']) ?>" 
+                                 alt="Profile" 
+                                 class="w-8 h-8 rounded-full border-2 border-purple-500">
                             <span class="absolute bottom-0 right-0 w-3 h-3 bg-green-500 rounded-full"></span>
                         </div>
                     </div>
