@@ -1,22 +1,24 @@
 <?php
 $server_name = 'localhost';
-$username = 'root';
+$username = 'root'; 
 $password = '';
 $database = "medipos";
 
-// Create connection with error handling
-try {
-    $conn = new mysqli($server_name, $username, $password, $database);
-    
-    if ($conn->connect_error) {
-        throw new Exception("Connection failed: " . $conn->connect_error);
-    }
-    
-    // Set charset to prevent issues
-    $conn->set_charset("utf8mb4");
-    
-} catch (Exception $e) {
-    error_log("Database connection error: " . $e->getMessage());
-    die("System error. Please try again later.");
+// Create connection
+$conn = new mysqli($server_name, $username, $password, $database);
+
+// Check connection
+if ($conn->connect_error) {
+    error_log("Database connection failed: " . $conn->connect_error);
+    die(json_encode([
+        'success' => false,
+        'error' => 'Database connection failed',
+        'message' => $conn->connect_error
+    ]));
 }
+
+$conn->set_charset("utf8mb4");
+
+// Debugging - verify connection
+error_log("Successfully connected to database: " . $database);
 ?>

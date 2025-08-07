@@ -199,7 +199,7 @@ if (!$result) {
         <div class="sidebar w-64 px-4 py-8 shadow-lg fixed h-full">
             <div class="flex items-center justify-center mb-8">
                 <h1 class="text-2xl font-bold">
-                    <span class="text-white">Smart</span><span class="text-purple-300">Cash</span>
+                    <span class="text-white">Medi</span><span class="text-purple-300">POS</span>
                 </h1>
             </div>
             

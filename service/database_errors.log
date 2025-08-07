@@ -1,0 +1,3 @@
+[07-Aug-2025 03:30:22 Europe/Berlin] [2025-08-07 03:30:22] Database Error: Access denied for user 'medipos_user'@'localhost' (using password: YES) in C:\xampp\htdocs\kasir_apotek\service\connection.php on line 17
+[07-Aug-2025 03:31:42 Europe/Berlin] PHP Warning:  Undefined variable $port in C:\xampp\htdocs\kasir_apotek\service\connection.php on line 15
+[07-Aug-2025 03:31:46 Europe/Berlin] PHP Warning:  Undefined variable $port in C:\xampp\htdocs\kasir_apotek\service\connection.php on line 15

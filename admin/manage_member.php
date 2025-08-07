@@ -4,26 +4,28 @@ error_reporting(E_ALL);
 ini_set('display_errors', 1);
 
 session_start();
-include '../service/connection.php';
-
-// Check if user is admin
-$email = $_SESSION['email'] ?? '';
-$admin = null;
-
-// Use prepared statement for admin check
-$stmt = $conn->prepare("SELECT * FROM admin WHERE email = ?");
-$stmt->bind_param("s", $email);
-$stmt->execute();
-$result = $stmt->get_result();
-$admin = $result->fetch_assoc();
-
-if (!$admin) {
-    header("Location: login.php");
+if (!isset($_SESSION['email'])) {
+    header("location:../service/login.php");
     exit();
 }
 
-$username = htmlspecialchars($admin['username']);
-$image = !empty($admin['image']) ? 'uploads/' . htmlspecialchars($admin['image']) : 'default.jpg';
+// Check for super admin role
+if ($_SESSION['role'] !== 'super_admin') {
+    header("location:../unauthorized.php");
+    exit();
+}
+
+// Database connection
+include '../service/connection.php';
+$email = $_SESSION['email'];
+
+// Get admin data
+$query = mysqli_query($conn, "SELECT * FROM admin WHERE email = '$email'");
+$admin = mysqli_fetch_assoc($query);
+
+// Set variables
+$username = $admin['username'];
+$image = !empty($admin['image']) ? '../uploads/' . $admin['image'] : 'default.jpg';
 
 // Initialize form data
 $formData = [
@@ -92,7 +94,7 @@ if (isset($_SESSION['error'])) {
 }
 ?>
 <!DOCTYPE html>
-<html lang="id">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -100,55 +102,39 @@ if (isset($_SESSION['error'])) {
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
     <style>
-        :root {
-            --primary: #6b46c1;
-            --secondary: #805ad5;
-            --dark: #2d3748;
-            --light: #f8fafc;
-        }
-        
         body {
-            font-family: 'Poppins', sans-serif;
-            background-color: var(--light);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f8fafc;
         }
-        
         .sidebar {
-            background-color: var(--primary);
+            background-color: #6b46c1;
             color: white;
         }
-        
         .sidebar a:hover {
-            background-color: var(--secondary);
+            background-color: #805ad5;
         }
-        
+        .stat-card {
+            border-left: 4px solid #6b46c1;
+        }
+        .bg-super-admin {
+            background-color: #6b46c1;
+        }
+        .text-super-admin {
+            color: #6b46c1;
+        }
         .nav-active {
-            background-color: var(--secondary);
+            background-color: #805ad5;
         }
-        
         .badge-active {
             background-color: #dcfce7;
             color: #166534;
         }
-        
         .badge-inactive {
             background-color: #fee2e2;
             color: #991b1b;
         }
-        
-        .action-btn {
-            transition: all 0.2s;
-        }
-        
-        .action-btn:hover {
-            transform: translateY(-2px);
-        }
-        
-        .form-input {
-            transition: all 0.3s;
-        }
-        
         .form-input:focus {
-            border-color: var(--primary);
+            border-color: #6b46c1;
             box-shadow: 0 0 0 3px rgba(107, 70, 193, 0.2);
         }
     </style>
@@ -164,31 +150,51 @@ if (isset($_SESSION['error'])) {
             </div>
             
             <div class="flex items-center px-4 py-3 mb-6 rounded-lg bg-purple-900">
-                <img src="<?= $image ?>" alt="Profile" class="w-10 h-10 rounded-full object-cover border-2 border-purple-500">
+                <div class="w-10 h-10 rounded-full bg-purple-700 flex items-center justify-center">
+                    <i class="fas fa-user-shield text-white"></i>
+                </div>
                 <div class="ml-3">
-                    <p class="font-medium text-white"><?= $username ?></p>
-                    <p class="text-xs text-purple-200">Admin</p>
+                    <p class="font-medium text-white"><?= htmlspecialchars($username) ?></p>
+                    <p class="text-xs text-purple-200">Super Admin</p>
                 </div>
             </div>
 
             <nav class="mt-8">
                 <a href="dashboard.php" class="flex items-center px-4 py-3 rounded-lg hover:bg-purple-800">
-                    <i class="fas fa-tachometer-alt mr-3"></i> Dashboard
+                    <i class="fas fa-tachometer-alt mr-3"></i>
+                    Dashboard
+                </a>
+                <a href="manage_admin.php" class="flex items-center px-4 py-3 rounded-lg hover:bg-purple-800">
+                    <i class="fas fa-user-cog mr-3"></i>
+                    Kelola Kasir
                 </a>
                 <a href="manage_member.php" class="flex items-center px-4 py-3 rounded-lg nav-active">
-                    <i class="fas fa-users mr-3"></i> Kelola Member
+                    <i class="fas fa-users mr-3"></i>
+                    Kelola Member
+                </a>
+                <a href="manage_category.php" class="flex items-center px-4 py-3 rounded-lg hover:bg-purple-800">
+                    <i class="fas fa-tags mr-3"></i>
+                    Kategori Produk
                 </a>
                 <a href="manage_product.php" class="flex items-center px-4 py-3 rounded-lg hover:bg-purple-800">
-                    <i class="fas fa-boxes mr-3"></i> Kelola Produk
+                    <i class="fas fa-boxes mr-3"></i>
+                    Kelola Produk
                 </a>
-                <a href="transaksi.php" class="flex items-center px-4 py-3 rounded-lg hover:bg-purple-800">
-                    <i class="fas fa-shopping-cart mr-3"></i> Transaksi
+                <a href="reports.php" class="flex items-center px-4 py-3 rounded-lg hover:bg-purple-800">
+                    <i class="fas fa-chart-bar mr-3"></i>
+                    Laporan & Grafik
                 </a>
-                <a href="laporan.php" class="flex items-center px-4 py-3 rounded-lg hover:bg-purple-800">
-                    <i class="fas fa-chart-bar mr-3"></i> Laporan
+                <a href="system_logs.php" class="flex items-center px-4 py-3 rounded-lg hover:bg-purple-800">
+                    <i class="fas fa-clipboard-list mr-3"></i>
+                    Log Sistem
+                </a>
+                <a href="settings.php" class="flex items-center px-4 py-3 rounded-lg hover:bg-purple-800">
+                    <i class="fas fa-cog mr-3"></i>
+                    Pengaturan
                 </a>
                 <a href="../service/logout.php" class="flex items-center px-4 py-3 rounded-lg hover:bg-purple-800 mt-8 text-red-200">
-                    <i class="fas fa-sign-out-alt mr-3"></i> Logout
+                    <i class="fas fa-sign-out-alt mr-3"></i>
+                    Logout
                 </a>
             </nav>
         </div>
@@ -201,7 +207,10 @@ if (isset($_SESSION['error'])) {
                     <div class="flex items-center space-x-4">
                         <span class="text-sm text-gray-500" id="currentDateTime"></span>
                         <div class="relative">
-                            <img src="<?= $image ?>" alt="Profile" class="w-8 h-8 rounded-full border-2 border-purple-500">
+                            <img src="<?= $image ?>" 
+                                 alt="Profile" 
+                                 class="w-8 h-8 rounded-full border-2 border-purple-500">
+                            <span class="absolute bottom-0 right-0 w-3 h-3 bg-green-500 rounded-full"></span>
                         </div>
                     </div>
                 </div>
@@ -313,13 +322,13 @@ if (isset($_SESSION['error'])) {
                                             </span>
                                         </td>
                                         <td class="py-4 px-4 text-center space-x-2">
-                                            <a href="manage_member.php?edit=<?= $member['id'] ?>" class="action-btn inline-block text-purple-600 hover:text-purple-800" title="Edit">
+                                            <a href="manage_member.php?edit=<?= $member['id'] ?>" class="inline-block text-purple-600 hover:text-purple-800" title="Edit">
                                                 <i class="fas fa-edit"></i>
                                             </a>
                                             <form action="proses_member.php" method="POST" class="inline" onsubmit="return confirm('Apakah Anda yakin ingin menghapus member ini?')">
                                                 <input type="hidden" name="id" value="<?= $member['id'] ?>">
                                                 <button type="submit" name="hapus" 
-                                                        class="action-btn text-red-600 hover:text-red-800 <?= $member['status'] == 'active' ? 'opacity-50 cursor-not-allowed' : '' ?>"
+                                                        class="text-red-600 hover:text-red-800 <?= $member['status'] == 'active' ? 'opacity-50 cursor-not-allowed' : '' ?>"
                                                         title="Hapus"
                                                         <?= $member['status'] == 'active' ? 'disabled' : '' ?>>
                                                     <i class="fas fa-trash-alt"></i>
@@ -328,7 +337,7 @@ if (isset($_SESSION['error'])) {
                                             <?php if($member['status'] == 'non-active'): ?>
                                             <form action="proses_member.php" method="POST" class="inline">
                                                 <input type="hidden" name="id" value="<?= $member['id'] ?>">
-                                                <button type="submit" name="activate" class="action-btn text-blue-600 hover:text-blue-800" title="Aktifkan">
+                                                <button type="submit" name="activate" class="text-blue-600 hover:text-blue-800" title="Aktifkan">
                                                     <i class="fas fa-sync-alt"></i>
                                                 </button>
                                             </form>
@@ -369,6 +378,14 @@ if (isset($_SESSION['error'])) {
         
         setInterval(updateDateTime, 1000);
         updateDateTime();
+
+        // Logout confirmation
+        document.querySelector('a[href="../service/logout.php"]').addEventListener('click', function(e) {
+            e.preventDefault();
+            if (confirm('Anda yakin ingin logout?')) {
+                window.location.href = this.getAttribute('href');
+            }
+        });
     </script>
 </body>
 </html>

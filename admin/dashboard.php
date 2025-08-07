@@ -5,9 +5,8 @@ if (!isset($_SESSION['email'])) {
     exit();
 }
 
-// Check for super admin role
-if ($_SESSION['role'] !== 'super_admin') {
-    header("location:../unauthorized.php");
+if (!isset($_SESSION['email']) || $_SESSION['role'] !== 'super_admin') {
+    header("Location: ../service/login.php");
     exit();
 }
 
@@ -138,11 +137,7 @@ while ($row = mysqli_fetch_assoc($recent_logs_query)) {
                     <i class="fas fa-clipboard-list mr-3"></i>
                     Log Sistem
                 </a>
-                <a href="settings.php" class="flex items-center px-4 py-3 rounded-lg hover:bg-purple-800">
-                    <i class="fas fa-cog mr-3"></i>
-                    Pengaturan
-                </a>
-                <a href="../service/logout.php" class="flex items-center px-4 py-3 rounded-lg hover:bg-purple-800 mt-8 text-red-200">
+                <a href="../service/logout.php" class="flex items-center px-4 py-0 rounded-lg hover:bg-purple-800 mt-5 text-red-200">
                     <i class="fas fa-sign-out-alt mr-3"></i>
                     Logout
                 </a>
