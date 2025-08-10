@@ -1,189 +1,178 @@
 <?php
 session_start();
-include './connection.php';
+include 'connection.php';
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    // Ambil data dari form
-    $discount = isset($_POST['discount']) ? (float)$_POST['discount'] : 0;
-    $nominal = isset($_POST['nominal']) ? (int)$_POST['nominal'] : 0;
-    $metode = isset($_POST['metode']) ? trim($_POST['metode']) : '';
-    $id_admin = isset($_SESSION['id']) ? $_SESSION['id'] : null;
-    $phone = isset($_POST['phone']) ? trim($_POST['phone']) : '';
-    $total_after_discount = isset($_POST['total']) ? (float)$_POST['total'] : 0;
-    $subtotal_before_discount = isset($_POST['subtotal_before_discount']) ? (float)$_POST['subtotal_before_discount'] : 0;
+// Debugging: Cek semua session yang tersedia
+error_log("Session data: " . print_r($_SESSION, true));
 
-    // Validasi login admin
-    if (!$id_admin) {
-        $_SESSION['error'] = "Anda belum login.";
-        header("Location: ../login.php");
-        exit();
-    }
-
-    // Validasi keranjang
-    if (!isset($_SESSION['cart']) || empty($_SESSION['cart'])) {
-        $_SESSION['error'] = "Keranjang belanja kosong.";
-        header("Location: ../keranjang.php");
-        exit();
-    }
-
-    // Hitung total dari keranjang dan margin total
-    $calculated_subtotal = 0;
-    $margin_total = 0;
-    foreach ($_SESSION['cart'] as $item) {
-        $calculated_subtotal += $item['harga'] * $item['jumlah'];
-        
-        // Ambil margin dari database untuk setiap produk
-        $product_stmt = $conn->prepare("SELECT margin, selling_price, starting_price FROM products WHERE id = ?");
-        $product_stmt->bind_param("i", $item['id']);
-        $product_stmt->execute();
-        $product_result = $product_stmt->get_result();
-        
-        if ($product_result->num_rows > 0) {
-            $product_data = $product_result->fetch_assoc();
-            // Hitung margin jika tidak ada di database
-            $margin = $product_data['margin'] ?? ($product_data['selling_price'] - $product_data['starting_price']);
-            $margin_total += $margin * $item['jumlah'];
-        }
-    }
-
-    // Validasi konsistensi subtotal
-    if (abs($calculated_subtotal - $subtotal_before_discount) > 0.01) {
-        $_SESSION['error'] = "Perhitungan subtotal tidak valid";
-        header("Location: ../keranjang.php");
-        exit();
-    }
-
-    // Validasi konsistensi diskon
-    $calculated_discount = $subtotal_before_discount - $total_after_discount;
-    if (abs($calculated_discount - ($subtotal_before_discount * $discount)) > 0.01) {
-        $_SESSION['error'] = "Perhitungan diskon tidak valid";
-        header("Location: ../keranjang.php");
-        exit();
-    }
-
-    // Validasi pembayaran (gunakan total setelah diskon)
-    if ($nominal < $total_after_discount) {
-        $_SESSION['error'] = "Nominal pembayaran kurang dari total setelah diskon.";
-        header("Location: ../keranjang.php");
-        exit();
-    }
-
-    // Inisialisasi ID member jika ada
-    $id_member = null;
-    $member_points = 0;
-    if (!empty($phone)) {
-        $stmt = $conn->prepare("SELECT id, point FROM member WHERE phone = ?");
-        $stmt->bind_param("s", $phone);
-        $stmt->execute();
-        $result = $stmt->get_result();
-        
-        if ($result->num_rows > 0) {
-            $member = $result->fetch_assoc();
-            $id_member = $member['id'];
-            $member_points = $member['point'];
-
-            // Update last_active dan status jadi active
-            $update_stmt = $conn->prepare("UPDATE member SET last_active = NOW(), status = 'active' WHERE id = ?");
-            $update_stmt->bind_param("i", $id_member);
-            $update_stmt->execute();
-        } else {
-            $_SESSION['error'] = "Member tidak ditemukan.";
-            header("Location: ../keranjang.php");
-            exit();
-        }
-    }
-
-    // Hitung poin yang didapat (berdasarkan subtotal sebelum diskon)
-    $poin_didapat = floor($subtotal_before_discount / 10000); // 1 poin per Rp10.000
-    $kembalian = $nominal - $total_after_discount;
-
-    // Mulai transaksi database
-    $conn->begin_transaction();
-
-    try {
-        // Simpan transaksi utama
-        $stmt = $conn->prepare("INSERT INTO transactions 
-            (fid_admin, fid_member, total_price, margin_total, paid_amount, kembalian, payment_method, points, discount) 
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)");
-        
-        $stmt->bind_param("iiddddsid", 
-            $id_admin, 
-            $id_member, 
-            $total_after_discount,
-            $margin_total,
-            $nominal, 
-            $kembalian, 
-            $metode,
-            $poin_didapat,
-            $discount
-        );
-
-        if (!$stmt->execute()) {
-            throw new Exception("Gagal simpan transaksi: " . $stmt->error);
-        }
-
-        $transaction_id = $conn->insert_id;
-
-        // Simpan detail item transaksi
-        foreach ($_SESSION['cart'] as $item) {
-            $product_id = $item['id'];
-            $quantity = $item['jumlah'];
-            $price = $item['harga'];
-            $subtotal = $price * $quantity;
-
-            $detail_stmt = $conn->prepare("INSERT INTO transaction_details 
-                (transaction_id, product_id, quantity, subtotal, harga) 
-                VALUES (?, ?, ?, ?, ?)");
-
-            $detail_stmt->bind_param("iiidi", 
-                $transaction_id, 
-                $product_id, 
-                $quantity, 
-                $subtotal,
-                $price
-            );
-
-            if (!$detail_stmt->execute()) {
-                throw new Exception("Gagal simpan detail transaksi: " . $detail_stmt->error);
-            }
-
-            // Update stok produk dengan pengecekan stok cukup
-            $update_stmt = $conn->prepare("UPDATE products SET qty = qty - ? WHERE id = ? AND qty >= ?");
-            $update_stmt->bind_param("iii", $quantity, $product_id, $quantity);
-            if (!$update_stmt->execute() || $update_stmt->affected_rows === 0) {
-                throw new Exception("Stok produk tidak mencukupi atau produk tidak ditemukan");
-            }
-        }
-
-        // Tambahkan poin ke member (jika ada)
-        if ($id_member && $poin_didapat > 0) {
-            $stmt = $conn->prepare("UPDATE member SET point = point + ? WHERE id = ?");
-            $stmt->bind_param("ii", $poin_didapat, $id_member);
-            if (!$stmt->execute()) {
-                throw new Exception("Gagal update poin member: " . $stmt->error);
-            }
-        }
-
-        // Commit transaksi jika semua berhasil
-        $conn->commit();
-        unset($_SESSION['cart']);
-        unset($_SESSION['cart_last_activity']);
-
-        // Redirect ke halaman sukses
-        $_SESSION['success'] = "Transaksi berhasil dengan ID: $transaction_id";
-        header("Location: sukses.php?id=$transaction_id");
-        exit();
-
-    } catch (Exception $e) {
-        // Rollback transaksi jika gagal
-        $conn->rollback();
-        $_SESSION['error'] = "Transaksi gagal: " . $e->getMessage();
-        header("Location: ../keranjang.php");
-        exit();
-    }
-} else {
-    $_SESSION['error'] = "Metode request tidak valid";
-    header("Location: ../keranjang.php");
+// Security checks lebih ketat
+if (!isset($_SESSION['email'], $_SESSION['role'], $_SESSION['user_id'])) {
+    $_SESSION['error_message'] = "Session tidak lengkap, silakan login kembali";
+    header("Location: ../service/login.php");
     exit();
 }
-?>
+
+if ($_SESSION['role'] !== 'cashier') {
+    $_SESSION['error_message'] = "Akses ditolak: Hanya kasir yang bisa melakukan transaksi";
+    header("Location: ../cashier/dashboard_kasir.php");
+    exit();
+}
+
+$cashier_id = $_SESSION['user_id'];
+
+// Validasi data input
+$required_fields = ['total', 'amount', 'payment_method'];
+foreach ($required_fields as $field) {
+    if (!isset($_POST[$field]) || empty($_POST[$field])) {
+        $_SESSION['error_message'] = "Field $field harus diisi";
+        header("Location: ../cashier/checkout.php");
+        exit();
+    }
+}
+
+// Proses data
+$total = (int)$_POST['total'];
+$amount = (int)$_POST['amount'];
+$payment_method = $_POST['payment_method'];
+$phone = !empty($_POST['phone']) ? $_POST['phone'] : null;
+$discount = !empty($_POST['discount']) ? (float)$_POST['discount'] : 0.00;
+$change = $amount - $total;
+
+// Validasi pembayaran
+if ($amount < $total) {
+    $_SESSION['error_message'] = "Nominal pembayaran kurang! Kurang " . format_currency($total - $amount);
+    header("Location: ../cashier/checkout.php");
+    exit();
+}
+
+// Fungsi helper untuk format currency
+function format_currency($amount) {
+    return 'Rp ' . number_format($amount, 0, ',', '.');
+}
+
+// Mulai transaksi
+$conn->begin_transaction();
+
+try {
+    // 1. Simpan transaksi utama
+    $stmt = $conn->prepare("INSERT INTO transactions 
+                          (fid_admin, total_price, payment_method, paid_amount, kembalian, final_total, points, discount, fid_member) 
+                          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)");
+    
+    // Cari member jika ada nomor telepon
+    $member_id = null;
+    if ($phone) {
+        $stmt_member = $conn->prepare("SELECT id FROM member WHERE phone = ? LIMIT 1");
+        $stmt_member->bind_param("s", $phone);
+        $stmt_member->execute();
+        $member_result = $stmt_member->get_result();
+        if ($member_result->num_rows > 0) {
+            $member = $member_result->fetch_assoc();
+            $member_id = $member['id'];
+        }
+    }
+    
+    // Hitung poin (1 poin per Rp10.000)
+    $points_earned = floor($total / 10000);
+    
+    $stmt->bind_param("isdiiidis", 
+        $cashier_id,
+        $total,
+        $payment_method,
+        $amount,
+        $change,
+        $total,
+        $points_earned,
+        $discount,
+        $member_id
+    );
+    
+    if (!$stmt->execute()) {
+        throw new Exception("Gagal menyimpan transaksi: " . $stmt->error);
+    }
+    
+    $transaction_id = $conn->insert_id;
+    
+    // 2. Simpan detail transaksi
+    foreach ($_SESSION['cart'] as $item) {
+        // Validasi item
+        if (!isset($item['id'], $item['quantity'], $item['price'], $item['name'])) {
+            throw new Exception("Format keranjang tidak valid");
+        }
+        
+        $product_id = $item['id'];
+        $quantity = $item['quantity'];
+        $price = $item['price'];
+        $subtotal = $price * $quantity;
+        
+        // Simpan detail
+        $stmt_detail = $conn->prepare("INSERT INTO transaction_details 
+                                     (transaction_id, product_id, quantity, subtotal, harga) 
+                                     VALUES (?, ?, ?, ?, ?)");
+        $stmt_detail->bind_param("iiiid", $transaction_id, $product_id, $quantity, $subtotal, $price);
+        
+        if (!$stmt_detail->execute()) {
+            throw new Exception("Gagal menyimpan detail transaksi: " . $stmt_detail->error);
+        }
+        
+        // Update stok
+        $stmt_stock = $conn->prepare("UPDATE products SET qty = qty - ? WHERE id = ?");
+        $stmt_stock->bind_param("ii", $quantity, $product_id);
+        
+        if (!$stmt_stock->execute()) {
+            throw new Exception("Gagal update stok produk: " . $stmt_stock->error);
+        }
+    }
+    
+    // 3. Update poin member jika ada
+    if ($member_id) {
+        $stmt_points = $conn->prepare("UPDATE member SET point = point + ? WHERE id = ?");
+        $stmt_points->bind_param("ii", $points_earned, $member_id);
+        
+        if (!$stmt_points->execute()) {
+            throw new Exception("Gagal update poin member: " . $stmt_points->error);
+        }
+    }
+    
+    // Commit transaksi
+    $conn->commit();
+    
+    // Siapkan data struk
+    $receipt_data = [
+        'transaction_id' => $transaction_id,
+        'date' => date('d/m/Y H:i:s'),
+        'cashier' => $_SESSION['username'],
+        'member_phone' => $phone,
+        'items' => array_map(function($item) {
+            return [
+                'name' => $item['name'],
+                'quantity' => $item['quantity'],
+                'price' => $item['price'],
+                'subtotal' => $item['price'] * $item['quantity']
+            ];
+        }, $_SESSION['cart']),
+        'subtotal' => array_reduce($_SESSION['cart'], function($carry, $item) {
+            return $carry + ($item['price'] * $item['quantity']);
+        }, 0),
+        'discount' => $discount,
+        'discount_amount' => array_reduce($_SESSION['cart'], function($carry, $item) {
+            return $carry + ($item['price'] * $item['quantity']);
+        }, 0) * $discount,
+        'total' => $total,
+        'amount_paid' => $amount,
+        'change' => $change
+    ];
+    
+    $_SESSION['receipt_data'] = $receipt_data;
+    unset($_SESSION['cart'], $_SESSION['cart_expiry']);
+    
+    header("Location: ../cashier/checkout.php");
+    exit();
+
+} catch (Exception $e) {
+    $conn->rollback();
+    $_SESSION['error_message'] = $e->getMessage();
+    error_log("Error in transaction: " . $e->getMessage());
+    header("Location: ../cashier/checkout.php");
+    exit();
+}

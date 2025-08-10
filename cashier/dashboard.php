@@ -63,7 +63,7 @@ function format_currency($amount) {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard Kasir - SmartCash</title>
+    <title>Dashboard Kasir - MediPOS</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <style>
@@ -87,7 +87,7 @@ function format_currency($amount) {
         <!-- Sidebar -->
         <div class="sidebar w-64 bg-white shadow-lg">
             <div class="p-4 border-b">
-                <h1 class="text-xl font-bold text-purple-800">Smart<span class="text-purple-600">Cash</span></h1>
+                <h1 class="text-xl font-bold text-purple-800">Medi<span class="text-purple-600">POS</span></h1>
                 <p class="text-sm text-gray-500">Kasir Dashboard</p>
             </div>
             <div class="p-4">
@@ -102,10 +102,10 @@ function format_currency($amount) {
                 </div>
                 
                 <nav>
-                    <a href="dashboard_kasir.php" class="block py-2 px-3 mb-1 rounded active-menu">
+                    <a href="dashboard.php" class="block py-2 px-3 mb-1 rounded active-menu">
                         <i class="fas fa-tachometer-alt mr-2"></i> Dashboard
                     </a>
-                    <a href="transaksi_baru.php" class="block py-2 px-3 mb-1 rounded hover:bg-purple-100">
+                    <a href="transaksi.php" class="block py-2 px-3 mb-1 rounded hover:bg-purple-100">
                         <i class="fas fa-cash-register mr-2"></i> Transaksi Baru
                     </a>
                     <a href="daftar_transaksi.php" class="block py-2 px-3 mb-1 rounded hover:bg-purple-100">

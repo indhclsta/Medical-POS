@@ -144,11 +144,11 @@ while ($row = mysqli_fetch_assoc($recent_logs_query)) {
             </nav>
         </div>
 
-        <!-- Main Content -->
+       <!-- Main Content -->
         <div class="ml-64 flex-1 overflow-y-auto">
             <header class="bg-white shadow-sm">
                 <div class="flex justify-between items-center px-6 py-4">
-                    <h2 class="text-xl font-semibold text-gray-800">Super Admin Dashboard</h2>
+                    <h2 class="text-xl font-semibold text-gray-800">Kelola Kasir</h2>
                     <div class="flex items-center space-x-4">
                         <span class="text-sm text-gray-500" id="currentDateTime"></span>
                         <div class="relative">

@@ -22,9 +22,9 @@ header("X-Content-Type-Options: nosniff");
 
 // Redirect if already logged in
 if (isset($_SESSION['logged_in'])) {
-    $redirect = ($_SESSION['role'] == 'super_admin') 
-              ? $base_url . '/admin/dashboard.php' 
-              : $base_url . '/cashier/dashboard.php';
+    $redirect = ($_SESSION['role'] == 'super_admin')
+        ? $base_url . '/admin/dashboard.php'
+        : $base_url . '/cashier/dashboard.php';
     header("Location: $redirect");
     exit();
 }
@@ -57,7 +57,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         $stmt->bind_param("s", $email);
         $stmt->execute();
         $result = $stmt->get_result();
-        
+
         if ($result->num_rows === 1) {
             $row = $result->fetch_assoc();
 
@@ -68,35 +68,33 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                     exit();
                 }
 
-                // Set secure session data
-                $_SESSION = [
-                    'id' => $row['id'],
-                    'email' => $row['email'],
-                    'username' => $row['username'],
-                    'role' => $row['role'],
-                    'logged_in' => true,
-                    'last_activity' => time(),
-                    'ip_address' => $_SERVER['REMOTE_ADDR'],
-                    'user_agent' => $_SERVER['HTTP_USER_AGENT']
-                ];
+                // Set secure session data (jangan overwrite seluruh $_SESSION)
+                $_SESSION['id'] = $row['id'];
+                $_SESSION['user_id'] = $row['id']; // Untuk proses transaksi kasir
+                $_SESSION['email'] = $row['email'];
+                $_SESSION['username'] = $row['username'];
+                $_SESSION['role'] = $row['role'];
+                $_SESSION['logged_in'] = true;
+                $_SESSION['last_activity'] = time();
+                $_SESSION['ip_address'] = $_SERVER['REMOTE_ADDR'];
+                $_SESSION['user_agent'] = $_SERVER['HTTP_USER_AGENT'];
 
                 session_regenerate_id(true);
 
                 // Redirect based on role
-                $redirect = ($row['role'] == 'super_admin') 
-                          ? $base_url . '/admin/dashboard.php' 
-                          : $base_url . '/cashier/dashboard.php';
+                $redirect = ($row['role'] == 'super_admin')
+                    ? $base_url . '/admin/dashboard.php'
+                    : $base_url . '/cashier/dashboard.php';
                 header("Location: $redirect");
                 exit();
             }
         }
-        
+
         // Log failed attempt
         error_log("Failed login attempt for email: " . $email . " - IP: " . $_SERVER['REMOTE_ADDR']);
         $_SESSION['error'] = "Email atau password salah!";
         header("Location: " . $base_url . "/service/login.php");
         exit();
-
     } catch (Exception $e) {
         error_log("Login system error: " . $e->getMessage() . " - IP: " . $_SERVER['REMOTE_ADDR']);
         $_SESSION['error'] = "Terjadi kesalahan sistem. Silakan coba lagi nanti.";
@@ -108,37 +106,53 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Login - SmartCash</title>
+    <title>Login - MediPOS</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;700&family=Poppins:wght@400;700&display=swap" rel="stylesheet">
     <style>
-        .font-outfit { font-family: 'Outfit', sans-serif; }
-        .font-poppins { font-family: 'Poppins', sans-serif; }
-        .bg-custom { background-color: #F3E8FF; }
-        .text-primary { color: #7C3AED; }
+        .font-outfit {
+            font-family: 'Outfit', sans-serif;
+        }
+
+        .font-poppins {
+            font-family: 'Poppins', sans-serif;
+        }
+
+        .bg-custom {
+            background-color: #F3E8FF;
+        }
+
+        .text-primary {
+            color: #7C3AED;
+        }
+
         .btn-primary {
             background-color: #7C3AED;
             transition: all 0.3s ease;
         }
+
         .btn-primary:hover {
             background-color: #6B21A8;
             transform: translateY(-1px);
             box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
         }
+
         .form-input:focus {
             border-color: #7C3AED;
             box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.2);
         }
     </style>
 </head>
+
 <body class="bg-custom font-outfit">
     <div class="flex min-h-screen items-center justify-center p-4">
         <div class="w-full max-w-md bg-white rounded-lg shadow-lg p-8">
-            <h1 class="text-4xl font-bold text-center mb-2 font-poppins">Smart <span class="text-primary">Cash</span></h1>
+            <h1 class="text-4xl font-bold text-center mb-2 font-poppins">Medi<span class="text-primary">POS</span></h1>
             <h2 class="text-xl text-center font-semibold mb-6 font-poppins">Sign In</h2>
 
             <?php if (isset($_SESSION['error'])): ?>
@@ -152,17 +166,17 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                 <div class="mb-4">
                     <label for="email" class="block mb-2 text-gray-600">Email</label>
                     <input type="email" id="email" name="email"
-                           class="w-full px-3 py-2 rounded-lg border border-gray-300 focus:outline-none form-input"
-                           placeholder="Masukkan email"
-                           required
-                           value="<?= isset($_POST['email']) ? htmlspecialchars($_POST['email']) : '' ?>">
+                        class="w-full px-3 py-2 rounded-lg border border-gray-300 focus:outline-none form-input"
+                        placeholder="Masukkan email"
+                        required
+                        value="<?= isset($_POST['email']) ? htmlspecialchars($_POST['email']) : '' ?>">
                 </div>
                 <div class="mb-4">
                     <label for="password" class="block mb-2 text-gray-600">Password</label>
                     <input type="password" id="password" name="password"
-                           class="w-full px-3 py-2 rounded-lg border border-gray-300 focus:outline-none form-input"
-                           placeholder="Masukkan password"
-                           required>
+                        class="w-full px-3 py-2 rounded-lg border border-gray-300 focus:outline-none form-input"
+                        placeholder="Masukkan password"
+                        required>
                 </div>
                 <div class="text-right mb-6">
                     <a href="forgot.php" class="text-primary text-sm hover:underline">Lupa Password?</a>
@@ -174,4 +188,5 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         </div>
     </div>
 </body>
+
 </html>

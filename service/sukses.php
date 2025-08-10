@@ -51,7 +51,7 @@ $total_after_discount = $subtotal_before_discount - $discount_amount;
 <html lang="id">
 <head>
     <meta charset="UTF-8">
-    <title>Nota Transaksi - SmartCash</title>
+    <title>Nota Transaksi - MediPOS</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css" rel="stylesheet"/>
     <style>
@@ -97,7 +97,7 @@ $total_after_discount = $subtotal_before_discount - $discount_amount;
 
         <div class="receipt">
             <div class="text-center mb-4">
-                <h1 class="text-2xl font-bold">Smart <span class="text-[#779341]">Cash</span></h1>
+                <h1 class="text-2xl font-bold">Medi <span class="text-[#779341]">POS</span></h1>
                 <p class="text-sm text-gray-600">Jl. Swadaya 4 Kp. Pulo Jahe No. 71, Jakarta Timur</p>
                 <p class="text-sm text-gray-600">Telp: (081) 2844-21151</p>
                 <p class="text-sm text-gray-600"><?= date('d/m/Y H:i:s') ?></p>
@@ -192,7 +192,7 @@ $total_after_discount = $subtotal_before_discount - $discount_amount;
             <div class="text-center text-xs text-gray-500 mt-6">
                 <p>Terima kasih telah berbelanja di Smart Cash</p>
                 <p>Barang yang sudah dibeli tidak dapat ditukar/dikembalikan</p>
-                <p class="mt-2">www.smartcash.com</p>
+                <p class="mt-2">www.medipos.com</p>
             </div>
 
             <!-- QR Code -->
@@ -246,7 +246,7 @@ $total_after_discount = $subtotal_before_discount - $discount_amount;
                             `Dibayar: Rp <?= number_format($transaction['paid_amount'], 0, ',', '.') ?>\n` +
                             `Kembali: Rp <?= number_format($transaction['kembalian'], 0, ',', '.') ?>\n\n` +
                             `Detail lengkap: ${transactionUrl}\n\n` +
-                            `Terima kasih telah berbelanja di SmartCash!`;
+                            `Terima kasih telah berbelanja di MediPOS!`;
                 
                 // Encode message untuk URL
                 const encodedMessage = encodeURIComponent(message);

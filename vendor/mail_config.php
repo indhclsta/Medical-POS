@@ -18,7 +18,7 @@ function sendMail($to, $subject, $message) {
         $mail->Port = 587;
 
         // Pengaturan email
-        $mail->setFrom('youremail@gmail.com', 'Smart Cash Support');
+        $mail->setFrom('youremail@gmail.com', 'MediPOS Support');
         $mail->addAddress($to);
         $mail->Subject = $subject;
         $mail->isHTML(true);

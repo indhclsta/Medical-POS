@@ -8,86 +8,105 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['token'], $_POST['new_p
     $confirm_password = $_POST['confirm_password'];
 
     if ($new_password !== $confirm_password) {
-        echo "<script>alert('Password tidak cocok!'); window.location.href='reset_password.php?token=" . htmlspecialchars($token) . "';</script>";
+        $_SESSION['error'] = 'Password tidak cocok!';
+        header("Location: reset_password.php?token=" . urlencode($token));
         exit;
     }
 
-    // Hash password baru
     $hashed_password = password_hash($new_password, PASSWORD_BCRYPT);
-
-    // Cek token di database
     $now = date("Y-m-d H:i:s");
+
     $stmt = $conn->prepare("SELECT id FROM admin WHERE reset_token = ? AND reset_expiry > ?");
     $stmt->bind_param("ss", $token, $now);
     $stmt->execute();
     $result = $stmt->get_result();
 
     if ($result->num_rows == 0) {
-        die("Token tidak ditemukan atau expired.<br>Token yang digunakan: $token");
+        $_SESSION['error'] = "Token tidak ditemukan atau sudah kedaluwarsa.";
+        header("Location: reset_password.php");
+        exit;
     }
 
     $row = $result->fetch_assoc();
     $admin_id = $row['id'];
 
-    // Update password dan hapus token
     $stmt = $conn->prepare("UPDATE admin SET password = ?, reset_token = NULL, reset_expiry = NULL WHERE id = ?");
     $stmt->bind_param("si", $hashed_password, $admin_id);
 
     if ($stmt->execute()) {
-        echo "<script>alert('Password berhasil diubah! Silakan login kembali.'); window.location.href='login.php';</script>";
+        $_SESSION['success'] = 'Password berhasil diubah!';
+        header("Location: login.php");
         exit;
     } else {
-        die("Error saat update password: " . $stmt->error);
+        $_SESSION['error'] = "Gagal mengubah password. Silakan coba lagi.";
+        header("Location: reset_password.php?token=" . urlencode($token));
+        exit;
     }
 }
 ?>
 
 <!DOCTYPE html>
-<html lang="en">
+<html lang="id">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Reset Password - SmartCash</title>
+    <title>Reset Password - MediPOS</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css" rel="stylesheet"/>
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;700&family=Poppins:wght@400;700&display=swap" rel="stylesheet"/>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;700&family=Poppins:wght@400;700&display=swap" rel="stylesheet">
     <style>
         .font-outfit { font-family: 'Outfit', sans-serif; }
         .font-poppins { font-family: 'Poppins', sans-serif; }
-        .bg-custom { background-color: #F1F9E4; }
-        .text-primary { color: #779341; }
-        .btn-primary { background-color: #779341; color: white; }
-        .btn-primary:hover { background-color: #5e762f; }
-        .form-label { color: #4A5568; }
-        .form-input { border-color: #D1D5DB; }
+        .bg-custom { background-color: #F3E8FF; }
+        .text-primary { color: #7C3AED; }
+        .btn-primary {
+            background-color: #7C3AED;
+            transition: all 0.3s ease;
+        }
+        .btn-primary:hover {
+            background-color: #6B21A8;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        .form-input:focus {
+            border-color: #7C3AED;
+            box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.2);
+        }
     </style>
 </head>
 <body class="bg-custom font-outfit">
-    <div class="flex min-h-screen">
-        <div class="w-full md:w-1/2 flex flex-col items-center justify-center container">
-            <div class="header">
-                <h1 class="text-4xl font-bold font-poppins">Smart <span class="text-primary">Cash</span></h1>
-            </div>
-            <div class="bg-white rounded-lg shadow-lg p-8 w-full max-w-md mt-16 form-container">
-                <h2 class="text-xl font-bold mb-6 font-poppins">Reset <span class="text-primary">Password</span></h2>
-                <form method="POST">
-                    <input type="hidden" name="token" value="<?php echo htmlspecialchars($_GET['token'] ?? ''); ?>">
-                    <div class="form-group">
-                        <label class="block form-label mb-2" for="new_password">New Password</label>
-                        <input class="w-full px-3 py-2 border rounded-lg form-input" id="new_password" name="new_password" type="password" required/>
-                    </div>
-                    <div class="form-group">
-                        <label class="block form-label mb-2" for="confirm_password">Confirm Password</label>
-                        <input class="w-full px-3 py-2 border rounded-lg form-input" id="confirm_password" name="confirm_password" type="password" required/>
-                    </div>
-                    <button type="submit" class="w-full py-2 rounded-lg btn-primary transition duration-300">Change Password</button>
-                </form>
-            </div>
-        </div>
-        <div class="hidden md:flex md:w-1/2 bg-primary items-center justify-center relative rounded-tl-[50px] bg-[#779341]">
-            <div class="illustration">
-            <img src="../image/icon.png" alt="Icon" class="w-full h-auto" height="400" src="icon.png" width="400"/>
-            </div>
+    <div class="flex min-h-screen items-center justify-center p-4">
+        <div class="w-full max-w-md bg-white rounded-lg shadow-lg p-8">
+            <h1 class="text-4xl font-bold text-center mb-2 font-poppins">Medi<span class="text-primary">POS</span></h1>
+            <h2 class="text-xl text-center font-semibold mb-6 font-poppins">Reset Password</h2>
+
+            <?php if (isset($_SESSION['error'])): ?>
+                <div class="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded">
+                    <?= htmlspecialchars($_SESSION['error']); unset($_SESSION['error']); ?>
+                </div>
+            <?php endif; ?>
+
+            <form method="POST" autocomplete="off">
+                <input type="hidden" name="token" value="<?= htmlspecialchars($_GET['token'] ?? '') ?>">
+
+                <div class="mb-4">
+                    <label for="new_password" class="block mb-2 text-gray-600">Password Baru</label>
+                    <input type="password" id="new_password" name="new_password"
+                           class="w-full px-3 py-2 rounded-lg border border-gray-300 focus:outline-none form-input"
+                           placeholder="Masukkan password baru" required>
+                </div>
+
+                <div class="mb-4">
+                    <label for="confirm_password" class="block mb-2 text-gray-600">Konfirmasi Password</label>
+                    <input type="password" id="confirm_password" name="confirm_password"
+                           class="w-full px-3 py-2 rounded-lg border border-gray-300 focus:outline-none form-input"
+                           placeholder="Ulangi password" required>
+                </div>
+
+                <button type="submit" class="w-full py-2 rounded-lg btn-primary text-white font-semibold">
+                    <i class="fas fa-lock mr-2"></i> Ubah Password
+                </button>
+            </form>
         </div>
     </div>
 </body>

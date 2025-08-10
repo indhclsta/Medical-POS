@@ -252,36 +252,27 @@ if (isset($_SESSION['error'])) {
     <style>
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f8fafc;
         }
-        
         .sidebar {
-            background: linear-gradient(180deg, #7E22CE 0%, #6B21A8 100%);
+            background-color: #6b46c1;
+            color: white;
         }
-        
+        .sidebar a:hover {
+            background-color: #805ad5;
+        }
+        .stat-card {
+            border-left: 4px solid #6b46c1;
+        }
+        .bg-super-admin {
+            background-color: #6b46c1;
+        }
+        .text-super-admin {
+            color: #6b46c1;
+        }
         .nav-active {
-            background-color: rgba(255, 255, 255, 0.1);
+            background-color: #805ad5;
         }
-        
-        .badge-primary {
-            background-color: #E9D5FF;
-            color: #7E22CE;
-        }
-        
-        .badge-active {
-            background-color: #D1FAE5;
-            color: #065F46;
-        }
-        
-        .badge-warning {
-            background-color: #FEF3C7;
-            color: #92400E;
-        }
-        
-        .badge-danger {
-            background-color: #FEE2E2;
-            color: #B91C1C;
-        }
-        
         .product-image {
             width: 40px;
             height: 40px;
@@ -289,39 +280,53 @@ if (isset($_SESSION['error'])) {
             border-radius: 4px;
             border: 1px solid #E5E7EB;
         }
-        
         .line-clamp-2 {
             display: -webkit-box;
             -webkit-line-clamp: 2;
             -webkit-box-orient: vertical;
             overflow: hidden;
         }
-        
         .modal {
             background-color: rgba(0, 0, 0, 0.5);
+        }
+        .badge-primary {
+            background-color: #E9D5FF;
+            color: #7E22CE;
+        }
+        .badge-active {
+            background-color: #D1FAE5;
+            color: #065F46;
+        }
+        .badge-warning {
+            background-color: #FEF3C7;
+            color: #92400E;
+        }
+        .badge-danger {
+            background-color: #FEE2E2;
+            color: #B91C1C;
         }
     </style>
 </head>
 
-<body class="bg-gray-100">
+<body class="bg-gray-50">
     <div class="flex h-screen">
         <!-- Sidebar -->
-        <div class="sidebar w-64 fixed h-full text-white p-4">
-            <div class="flex items-center mb-8">
-                <img src="../assets/images/logo-white.png" alt="MediPOS Logo" class="h-8">
-                <span class="ml-2 font-bold text-xl">MediPOS</span>
+        <div class="sidebar w-64 px-4 py-8 shadow-lg fixed h-full">
+            <div class="flex items-center justify-center mb-8">
+                <h1 class="text-2xl font-bold">
+                    <span class="text-white">Medi</span><span class="text-purple-300">POS</span>
+                </h1>
             </div>
             
             <!-- Profile Section -->
-            <div class="flex items-center mb-8">
+            <div class="flex items-center px-4 py-3 mb-6 rounded-lg bg-purple-900">
                 <img src="<?= $image ?>" alt="Profile" class="w-10 h-10 rounded-full border-2 border-purple-300">
                 <div class="ml-3">
                     <p class="font-medium text-white"><?= htmlspecialchars($username) ?></p>
                     <p class="text-xs text-purple-200">Super Admin</p>
                 </div>
             </div>
-            
-            <!-- Navigation -->
+
             <nav class="mt-8">
                 <a href="dashboard.php" class="flex items-center px-4 py-3 rounded-lg hover:bg-purple-800">
                     <i class="fas fa-tachometer-alt mr-3"></i>Dashboard
@@ -344,10 +349,7 @@ if (isset($_SESSION['error'])) {
                 <a href="system_logs.php" class="flex items-center px-4 py-3 rounded-lg hover:bg-purple-800">
                     <i class="fas fa-clipboard-list mr-3"></i>Log Sistem
                 </a>
-                <a href="settings.php" class="flex items-center px-4 py-3 rounded-lg hover:bg-purple-800">
-                    <i class="fas fa-cog mr-3"></i>Pengaturan
-                </a>
-                <a href="../service/logout.php" class="flex items-center px-4 py-3 rounded-lg hover:bg-purple-800 mt-8 text-red-200">
+                <a href="../service/logout.php" class="flex items-center px-4 py-0 rounded-lg hover:bg-purple-800 mt-5 text-red-200">
                     <i class="fas fa-sign-out-alt mr-3"></i>Logout
                 </a>
             </nav>

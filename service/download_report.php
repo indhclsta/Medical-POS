@@ -216,7 +216,7 @@ $html .= '
     </table>
 
     <div class="footer">
-        <p>Laporan ini dibuat secara otomatis oleh sistem SmartCash</p>
+        <p>Laporan ini dibuat secara otomatis oleh sistem MediPOS</p>
     </div>
 </body>
 </html>';
@@ -232,7 +232,7 @@ $dompdf->setPaper('A4', 'portrait');
 $dompdf->render();
 
 // Generate filename
-$filename = 'Laporan_Transaksi_SmartCash_' . ($report_type == 'periode' ?
+$filename = 'Laporan_Transaksi_MediPOS_' . ($report_type == 'periode' ?
     date('Ymd', strtotime($start_date)) . '_' . date('Ymd', strtotime($end_date)) :
     'Keseluruhan') . '.pdf';
 
