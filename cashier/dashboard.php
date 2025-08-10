@@ -1,42 +1,31 @@
-<?php
+<?php  
 require_once '../service/connection.php';
 session_start();
 if (!isset($_SESSION['email']) || $_SESSION['role'] !== 'cashier') {
     header("Location: ../service/login.php");
     exit();
 }
-// Secure session and role check
-if (session_status() === PHP_SESSION_NONE) {
-    session_start([
-        'cookie_httponly' => true,
-        'cookie_samesite' => 'Lax'
-    ]);
-}
 
 // Security headers
 header("X-Frame-Options: DENY");
 header("X-Content-Type-Options: nosniff");
 
-// Validate session and role
+// Validate session
 if (!isset($_SESSION['logged_in'])) {
     header("Location: ../service/login.php");
     exit;
 }
 
-if ($_SESSION['role'] !== 'cashier') {
-    header("Location: ../unauthorized.php");
-    exit;
+if (isset($_SESSION['ip_address']) && isset($_SESSION['user_agent'])) {
+    if ($_SESSION['ip_address'] !== $_SERVER['REMOTE_ADDR'] || 
+        $_SESSION['user_agent'] !== $_SERVER['HTTP_USER_AGENT']) {
+        session_destroy();
+        header("Location: ../service/login.php");
+        exit;
+    }
 }
 
-// Verify session security
-if ($_SESSION['ip_address'] !== $_SERVER['REMOTE_ADDR'] || 
-    $_SESSION['user_agent'] !== $_SERVER['HTTP_USER_AGENT']) {
-    session_destroy();
-    header("Location: ../service/login.php");
-    exit;
-}
-
-// Get today's transactions
+// Ambil data penjualan hari ini
 $today_sales = 0;
 $today_transactions = 0;
 try {
@@ -53,286 +42,411 @@ try {
     error_log("Dashboard error: " . $e->getMessage());
 }
 
-// Format currency
 function format_currency($amount) {
     return 'Rp ' . number_format($amount, 0, ',', '.');
 }
+
+// Helper untuk menandai menu aktif
+function is_active($page) {
+    $current = basename($_SERVER['PHP_SELF']);
+    return $current === $page ? 'active' : '';
+}
 ?>
 <!DOCTYPE html>
-<html lang="en">
+<html lang="id">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard Kasir - MediPOS</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-        tailwind.config = {
-            theme: {
-                extend: {
-                    colors: {
-                        primary: {
-                            50: '#faf5ff',
-                            100: '#f3e8ff',
-                            200: '#e9d5ff',
-                            300: '#d8b4fe',
-                            400: '#c084fc',
-                            500: '#a855f7',
-                            600: '#9333ea',
-                            700: '#7e22ce',
-                            800: '#6b21a8',
-                            900: '#581c87',
-                        }
-                    }
-                }
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dashboard Kasir - MediPOS</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+<style>
+    :root{
+        --purple-dark: #5B21B6; /* primary fresh purple */
+        --purple-soft: #A78BFA; /* accent */
+        --muted: #6B7280; 
+        --bg: #F8FAFC; 
+        --card: #FFFFFF;
+    }
+
+    html,body{height:100%;}
+
+    /* Sidebar */
+    .sidebar{
+        background-color: var(--purple-dark);
+        color: white;
+        min-height:100vh;
+        position:relative;
+        overflow:hidden;
+    }
+
+    .sidebar::before{
+        content: '';
+        position:absolute;
+        inset:0;
+        background-image: linear-gradient(135deg, rgba(255,255,255,0.02) 25%, transparent 25%, transparent 50%, rgba(255,255,255,0.02) 50%, rgba(255,255,255,0.02) 75%, transparent 75%, transparent);
+        background-size: 16px 16px;
+        pointer-events: none;
+    }
+
+    .brand {
+        padding: 20px 18px;
+        display:flex;
+        gap:10px;
+        align-items:center;
+        border-bottom: 1px solid rgba(255,255,255,0.06);
+    }
+    .brand h1{font-size:1.25rem; font-weight:700; color: #FDF4FF; margin:0}
+    .brand .logo-badge{background: rgba(255,255,255,0.06); padding:8px; border-radius:8px; display:flex; align-items:center; justify-content:center}
+
+    /* profile box */
+    .profile-box{margin:14px; background: rgba(255,255,255,0.04); padding:10px; border-radius:10px; display:flex; gap:12px; align-items:center}
+    .profile-box img{width:44px;height:44px;border-radius:8px; object-fit:cover; border:2px solid rgba(255,255,255,0.06)}
+    .profile-box .meta{font-size:0.92rem}
+    .profile-box .meta p{margin:0}
+    .profile-box .meta .role{color: rgba(255,255,255,0.75); font-size:0.8rem}
+
+    /* menu items */
+    .menu a{
+        display:flex; align-items:center; gap:10px; padding:10px 14px; margin:6px 10px; border-radius:8px; color: #F8F7FF; text-decoration:none; font-weight:500; transition: all .18s ease;
+        border-left: 3px solid transparent;
+    }
+    .menu a:hover{
+        background-color: rgba(255,255,255,0.06);
+        backdrop-filter: blur(2px);
+        transform: translateX(4px);
+        box-shadow: 0 6px 18px rgba(8,7,14,0.06);
+    }
+    .menu a.active{
+        background-color: rgba(167,139,250,0.16);
+        color: #FFF;
+        border-left: 4px solid var(--purple-soft);
+        transform:none;
+    }
+
+    /* collapse button */
+    .collapse-btn{
+        position:absolute;
+        right: -10px; /* fixed supaya tidak terpotong */
+        top:18px;
+        background:var(--purple-dark);
+        border-radius:12px;
+        width:36px;
+        height:36px;
+        display:flex;
+        align-items:center;
+        justify-content:center;
+        box-shadow:0 8px 18px rgba(12,11,20,0.12);
+        border: 2px solid rgba(255,255,255,0.04);
+        z-index: 10;
+    }
+
+    /* main area */
+    .main-area{background:var(--bg); min-height:100vh}
+    header.app-header{background:transparent; padding:18px; display:flex; align-items:center; justify-content:space-between; gap:12px}
+
+    /* stat card style */
+    .stat-card{background:var(--card); border-radius:12px; padding:18px; box-shadow: 0 6px 18px rgba(13,12,20,0.06); border:1px solid rgba(16,15,20,0.03)}
+    .stat-card .title{color:var(--muted)}
+    .stat-card .value{font-weight:700; font-size:1.5rem; color:#111827}
+    .stat-card.accent-left{border-left:6px solid var(--purple-soft)}
+
+    /* quick actions */
+    .quick-action{background:var(--card); border-radius:12px; padding:18px; display:flex; flex-direction:column; gap:8px; align-items:center; justify-content:center; transition: transform .12s ease, box-shadow .12s ease}
+    .quick-action:hover{transform: translateY(-6px); box-shadow: 0 10px 30px rgba(12,11,20,0.08)}
+
+    .table thead th{font-size:0.75rem; color:var(--muted); text-transform:uppercase; letter-spacing:0.04em}
+    .table tbody tr:hover{background: white}
+
+    /* responsive tweak */
+    .sidebar.collapsed{width:72px}
+    .sidebar.collapsed .brand h1{display:none}
+    .sidebar.collapsed .profile-box,.sidebar.collapsed .menu a span.label{display:none}
+    .sidebar.collapsed .menu a{justify-content:center}
+
+    @media (max-width:900px){
+        .sidebar{position:fixed; z-index:40; width:260px}
+        .sidebar.collapsed{transform: translateX(-120%)}
+        .collapse-btn{display:none}
+    }
+</style>
+</head>
+<body class="font-sans text-sm">
+<div id="app" class="flex">
+    <!-- SIDEBAR -->
+    <aside id="sidebar" class="sidebar w-64">
+        <div class="brand">
+            <div class="logo-badge"><i class="fas fa-clinic-medical text-white"></i></div>
+            <div>
+                <h1>MediPOS</h1>
+                <div style="font-size:12px;color:rgba(255,255,255,0.85)">Kasir • Sistem</div>
+            </div>
+        </div>
+
+        <div class="profile-box">
+            <img src="https://avatars.dicebear.com/api/initials/<?= urlencode(substr($_SESSION['username'],0,2)) ?>.svg" alt="profile">
+            <div class="meta">
+                <p style="font-weight:600"><?= htmlspecialchars($_SESSION['username']) ?></p>
+                <p class="role">Kasir • <?= htmlspecialchars($_SESSION['email']) ?></p>
+            </div>
+        </div>
+
+        <nav class="menu px-2">
+            <a href="dashboard.php" class="<?= is_active('dashboard.php') ?>"><span class="icon"><i class="fas fa-tachometer-alt"></i></span><span class="label">Dashboard</span></a>
+            <a href="transaksi.php" class="<?= is_active('transaksi.php') ?>"><span class="icon"><i class="fas fa-cash-register"></i></span><span class="label">Transaksi Baru</span></a>
+            <a href="daftar_transaksi.php" class="<?= is_active('daftar_transaksi.php') ?>"><span class="icon"><i class="fas fa-list"></i></span><span class="label">Daftar Transaksi</span></a>
+            <a href="produk.php" class="<?= is_active('produk.php') ?>"><span class="icon"><i class="fas fa-boxes"></i></span><span class="label">Kelola Produk</span></a>
+            <hr style="border-color: rgba(255,255,255,0.06); margin:12px 8px">
+            <a href="laporan_harian.php" class="<?= is_active('laporan_harian.php') ?>"><span class="icon"><i class="fas fa-chart-line"></i></span><span class="label">Laporan</span></a>
+            <a href="../service/logout.php"><span class="icon"><i class="fas fa-sign-out-alt"></i></span><span class="label">Logout</span></a>
+        </nav>
+
+        <button id="collapseBtn" class="collapse-btn" title="Toggle sidebar">
+            <i class="fas fa-chevron-left" style="color: #fff"></i>
+        </button>
+    </aside>
+
+    <!-- MAIN AREA -->
+    <div class="main-area flex-1 min-h-screen">
+        <header class="app-header">
+            <div class="flex items-center gap-4">
+                <button id="mobileOpen" class="md:hidden p-2 rounded bg-white shadow" title="Open menu"><i class="fas fa-bars"></i></button>
+                <div>
+                    <h2 class="text-lg font-semibold text-gray-800">Dashboard</h2>
+                    <div style="font-size:12px;color:var(--muted)"><?= date('l, d F Y') ?></div>
+                </div>
+            </div>
+
+            <div class="flex items-center gap-3">
+                <button id="focusBtn" class="p-2 rounded bg-white shadow text-sm">Focus mode</button>
+                <div class="relative">
+                    <button id="notifBtn" class="p-2 rounded bg-white shadow"><i class="fas fa-bell"></i></button>
+                </div>
+                <div class="flex items-center gap-3 p-2 rounded bg-white shadow">
+                    <div style="width:36px;height:36px;border-radius:8px;background:linear-gradient(135deg,var(--purple-soft),#7C3AED); display:flex; align-items:center; justify-content:center; color:white"><i class="fas fa-user"></i></div>
+                    <div style="font-size:13px">
+                        <div style="font-weight:600"><?= htmlspecialchars($_SESSION['username']) ?></div>
+                        <div style="font-size:11px;color:var(--muted)">Kasir</div>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <main class="p-6">
+            <!-- stats -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+                <div class="stat-card accent-left">
+                    <div class="flex justify-between items-center">
+                        <div>
+                            <div class="title">Penjualan Hari Ini</div>
+                            <div class="value mt-2"><?= format_currency($today_sales) ?></div>
+                        </div>
+                        <div class="p-3 rounded-lg bg-purple-50 text-purple-700"><i class="fas fa-wallet fa-lg"></i></div>
+                    </div>
+                </div>
+                <div class="stat-card accent-left" style="border-left-color:#60A5FA">
+                    <div class="flex justify-between items-center">
+                        <div>
+                            <div class="title">Transaksi Hari Ini</div>
+                            <div class="value mt-2"><?= $today_transactions ?></div>
+                        </div>
+                        <div class="p-3 rounded-lg bg-blue-50 text-blue-600"><i class="fas fa-receipt fa-lg"></i></div>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="flex justify-between items-center">
+                        <div>
+                            <div class="title">Produk Tersedia</div>
+                            <div class="value mt-2">142</div>
+                        </div>
+                        <div class="p-3 rounded-lg bg-purple-50 text-purple-700"><i class="fas fa-box-open fa-lg"></i></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Quick Actions -->
+            <section class="mb-6">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="text-md font-semibold">Quick Actions</h3>
+                    <div style="font-size:13px;color:var(--muted)">Shortcut: <kbd class="rounded px-2 py-1 bg-white shadow">/</kbd></div>
+                </div>
+                <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                    <a href="transaksi_baru.php" class="quick-action">
+                        <div class="p-3 rounded bg-purple-50 text-purple-700"><i class="fas fa-cash-register fa-2x"></i></div>
+                        <div style="font-weight:600">Transaksi Baru</div>
+                        <div style="font-size:12px;color:var(--muted)">Cepat buat transaksi</div>
+                    </a>
+                    <a href="produk.php" class="quick-action">
+                        <div class="p-3 rounded bg-gray-100 text-gray-800"><i class="fas fa-search fa-2x"></i></div>
+                        <div style="font-weight:600">Cari Produk</div>
+                        <div style="font-size:12px;color:var(--muted)">Cari berdasarkan nama / barcode</div>
+                    </a>
+                    <a href="daftar_transaksi.php" class="quick-action">
+                        <div class="p-3 rounded bg-gray-100 text-gray-800"><i class="fas fa-history fa-2x"></i></div>
+                        <div style="font-weight:600">Riwayat</div>
+                        <div style="font-size:12px;color:var(--muted)">Lihat transaksi terdahulu</div>
+                    </a>
+                    <a href="laporan_harian.php" class="quick-action">
+                        <div class="p-3 rounded bg-gray-100 text-gray-800"><i class="fas fa-chart-line fa-2x"></i></div>
+                        <div style="font-weight:600">Laporan</div>
+                        <div style="font-size:12px;color:var(--muted)">Ringkasan penjualan</div>
+                    </a>
+                </div>
+            </section>
+
+            <!-- Recent Transactions -->
+            <section class="bg-white rounded-lg shadow p-4">
+                <div class="flex items-center justify-between mb-3">
+                    <h4 class="font-semibold">Transaksi Terakhir</h4>
+                    <a href="daftar_transaksi.php" class="text-sm text-purple-600">Lihat semua</a>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="min-w-full table">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th class="px-4 py-3 text-left">ID</th>
+                                <th class="px-4 py-3 text-left">Waktu</th>
+                                <th class="px-4 py-3 text-left">Items</th>
+                                <th class="px-4 py-3 text-left">Total</th>
+                                <th class="px-4 py-3 text-left">Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr class="border-b">
+                                <td class="px-4 py-3">#TRX-20230801-001</td>
+                                <td class="px-4 py-3">10:25 AM</td>
+                                <td class="px-4 py-3">3 Items</td>
+                                <td class="px-4 py-3">Rp 125.000</td>
+                                <td class="px-4 py-3"><span class="px-2 py-1 rounded-full text-xs" style="background:#ECFDF5;color:#065F46">Selesai</span></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+        </main>
+    </div>
+</div>
+<script>
+(function(){
+    const sidebar = document.getElementById('sidebar');
+    const collapseBtn = document.getElementById('collapseBtn');
+    const focusBtn = document.getElementById('focusBtn');
+    const mobileOpen = document.getElementById('mobileOpen');
+
+    // helper: toggle icon on collapse button
+    function setCollapseIcon(isCollapsed){
+        if(!collapseBtn) return;
+        const icon = collapseBtn.querySelector('i');
+        if(!icon) return;
+        // prefer chevrons pointing to the action: when collapsed (sidebar small) show chevron-right to open
+        icon.classList.remove('fa-chevron-left', 'fa-chevron-right');
+        icon.classList.add(isCollapsed ? 'fa-chevron-right' : 'fa-chevron-left');
+        collapseBtn.setAttribute('aria-expanded', String(!isCollapsed));
+        collapseBtn.title = isCollapsed ? 'Buka sidebar' : 'Tutup sidebar';
+    }
+
+    // safe guards
+    if(collapseBtn){
+        // initialize state from class
+        setCollapseIcon(sidebar && sidebar.classList.contains('collapsed'));
+
+        collapseBtn.addEventListener('click', ()=>{
+            if(!sidebar) return;
+            const isCollapsed = sidebar.classList.toggle('collapsed');
+            // update icon accordingly (true -> collapsed)
+            setCollapseIcon(isCollapsed);
+            // ensure collapse button sits above (in case of stacking)
+            collapseBtn.style.zIndex = 20;
+        });
+    }
+
+    // focus mode toggler
+    if(focusBtn){
+        focusBtn.addEventListener('click', ()=>{
+            const body = document.body;
+            if(body.classList.contains('focus-mode')){
+                body.classList.remove('focus-mode');
+                focusBtn.textContent = 'Focus mode';
+                focusBtn.setAttribute('aria-pressed', 'false');
+            }else{
+                body.classList.add('focus-mode');
+                focusBtn.textContent = 'Exit focus';
+                focusBtn.setAttribute('aria-pressed', 'true');
+            }
+        });
+    }
+
+    // Mobile menu toggle (small screens)
+    if(mobileOpen && sidebar){
+        mobileOpen.addEventListener('click', ()=>{
+            // on mobile we use the same collapsed class to hide/show
+            sidebar.classList.toggle('collapsed');
+            // keep collapse icon in sync if visible
+            setCollapseIcon(sidebar.classList.contains('collapsed'));
+        });
+
+        // close sidebar when clicking outside on mobile
+        document.addEventListener('click', (e)=>{
+            const isMobile = window.innerWidth <= 900;
+            if(!isMobile) return;
+            if(!sidebar.classList.contains('collapsed') && !sidebar.contains(e.target) && !mobileOpen.contains(e.target)){
+                sidebar.classList.add('collapsed');
+                setCollapseIcon(true);
+            }
+        });
+    }
+
+    // keyboard quick open (/) — skip if user typing in input or textarea
+    document.addEventListener('keydown', (e)=>{
+        if(e.key === '/'){
+            const active = document.activeElement;
+            const typing = active && (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA' || active.isContentEditable);
+            if(typing) return;
+            e.preventDefault();
+            // for now toggle quick search or focus first quick action; fallback: toggle sidebar on small screens
+            // TODO: hook this to a real search modal
+            if(window.innerWidth <= 900 && sidebar){
+                sidebar.classList.toggle('collapsed');
+                setCollapseIcon(sidebar.classList.contains('collapsed'));
+            } else {
+                // simple visual cue until search implemented
+                alert('Shortcut: buka pencarian produk (belum diimplementasi)');
             }
         }
-    </script>
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
-    <style>
-        .sidebar {
-            transition: all 0.3s;
-            background: linear-gradient(180deg, #6b21a8 0%, #7e22ce 100%);
-        }
-        .active-menu {
-            background-color: rgba(255, 255, 255, 0.1);
-            color: white;
-        }
-        .active-menu:hover {
-            background-color: rgba(255, 255, 255, 0.15);
-        }
-        .stat-card {
-            border-left: 4px solid;
-            transition: transform 0.2s;
-        }
-        .stat-card:hover {
-            transform: translateY(-2px);
-        }
-        .quick-action-card {
-            transition: all 0.2s;
-            border: 1px solid #e9d5ff;
-        }
-        .quick-action-card:hover {
-            transform: translateY(-3px);
-            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
-        }
-    </style>
-</head>
-<body class="bg-gray-50 font-sans">
-    <div class="flex h-screen overflow-hidden">
-        <!-- Sidebar -->
-        <div class="sidebar w-64 shadow-lg text-white">
-            <div class="p-4 border-b border-purple-800">
-                <h1 class="text-xl font-bold text-white">Medi<span class="text-purple-300">POS</span></h1>
-                <p class="text-sm text-purple-200">Kasir Dashboard</p>
-            </div>
-            <div class="p-4">
-                <div class="flex items-center space-x-3 mb-6 p-3 rounded-lg bg-purple-700/30">
-                    <div class="w-10 h-10 rounded-full bg-purple-600 flex items-center justify-center">
-                        <i class="fas fa-user text-purple-100"></i>
-                    </div>
-                    <div>
-                        <p class="font-medium"><?= htmlspecialchars($_SESSION['username']) ?></p>
-                        <p class="text-xs text-purple-200">Kasir</p>
-                    </div>
-                </div>
-                
-                <nav class="space-y-1">
-                    <a href="dashboard.php" class="block py-2 px-3 mb-1 rounded-lg active-menu">
-                        <i class="fas fa-tachometer-alt mr-2"></i> Dashboard
-                    </a>
-                    <a href="transaksi.php" class="block py-2 px-3 mb-1 rounded-lg hover:bg-white/10 text-purple-100">
-                        <i class="fas fa-cash-register mr-2"></i> Transaksi Baru
-                    </a>
-                    <a href="daftar_transaksi.php" class="block py-2 px-3 mb-1 rounded-lg hover:bg-white/10 text-purple-100">
-                        <i class="fas fa-list mr-2"></i> Daftar Transaksi
-                    </a>
-                    <a href="produk.php" class="block py-2 px-3 mb-1 rounded-lg hover:bg-white/10 text-purple-100">
-                        <i class="fas fa-boxes mr-2"></i> Kelola Produk
-                    </a>
-                    <hr class="my-3 border-purple-700">
-                    <a href="../service/logout.php" class="block py-2 px-3 mb-1 rounded-lg hover:bg-red-500/10 text-purple-100">
-                        <i class="fas fa-sign-out-alt mr-2"></i> Logout
-                    </a>
-                </nav>
-            </div>
-        </div>
+    });
 
-        <!-- Main Content -->
-        <div class="flex-1 overflow-auto bg-gray-50">
-            <!-- Header -->
-            <header class="bg-white shadow-sm p-4 flex justify-between items-center">
-                <h2 class="text-xl font-semibold text-gray-800">
-                    <i class="fas fa-tachometer-alt mr-2 text-primary-600"></i> Dashboard
-                </h2>
-                <div class="flex items-center space-x-4">
-                    <span class="text-sm text-gray-500">
-                        <i class="far fa-calendar-alt mr-1"></i> <?= date('d F Y') ?>
-                    </span>
-                    <div class="relative">
-                        <button class="w-8 h-8 rounded-full bg-primary-100 flex items-center justify-center text-primary-600 hover:bg-primary-200">
-                            <i class="fas fa-bell"></i>
-                        </button>
-                        <span class="absolute top-0 right-0 w-2 h-2 bg-red-500 rounded-full"></span>
-                    </div>
-                </div>
-            </header>
+    // keep icon state in sync on resize (so desktop/mobile transitions are OK)
+    window.addEventListener('resize', ()=>{
+        if(!sidebar || !collapseBtn) return;
+        // if screen expanded to desktop and sidebar was hidden because of mobile, ensure proper classes (optional)
+        // we won't force open/close, just sync icon
+        setCollapseIcon(sidebar.classList.contains('collapsed'));
+    });
 
-            <!-- Dashboard Content -->
-            <main class="p-6">
-                <!-- Stats Cards -->
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-                    <div class="stat-card bg-white rounded-lg shadow p-6 border-l-primary-500">
-                        <div class="flex justify-between items-start">
-                            <div>
-                                <p class="text-gray-500">Penjualan Hari Ini</p>
-                                <h3 class="text-2xl font-bold mt-1 text-primary-600"><?= format_currency($today_sales) ?></h3>
-                            </div>
-                            <div class="p-3 rounded-full bg-primary-50 text-primary-600">
-                                <i class="fas fa-wallet text-lg"></i>
-                            </div>
-                        </div>
-                        <div class="mt-4 text-sm text-primary-500 flex items-center">
-                            <i class="fas fa-arrow-up mr-1"></i>
-                            <span>12% dari kemarin</span>
-                        </div>
-                    </div>
-                    
-                    <div class="stat-card bg-white rounded-lg shadow p-6 border-l-blue-500">
-                        <div class="flex justify-between items-start">
-                            <div>
-                                <p class="text-gray-500">Transaksi Hari Ini</p>
-                                <h3 class="text-2xl font-bold mt-1 text-blue-600"><?= $today_transactions ?></h3>
-                            </div>
-                            <div class="p-3 rounded-full bg-blue-50 text-blue-600">
-                                <i class="fas fa-receipt text-lg"></i>
-                            </div>
-                        </div>
-                        <div class="mt-4 text-sm text-blue-500 flex items-center">
-                            <i class="fas fa-arrow-up mr-1"></i>
-                            <span>5 transaksi baru</span>
-                        </div>
-                    </div>
-                    
-                    <div class="stat-card bg-white rounded-lg shadow p-6 border-l-purple-500">
-                        <div class="flex justify-between items-start">
-                            <div>
-                                <p class="text-gray-500">Produk Tersedia</p>
-                                <h3 class="text-2xl font-bold mt-1 text-purple-600">142</h3>
-                            </div>
-                            <div class="p-3 rounded-full bg-purple-50 text-purple-600">
-                                <i class="fas fa-box-open text-lg"></i>
-                            </div>
-                        </div>
-                        <div class="mt-4 text-sm text-purple-500">
-                            <span>8 produk hampir habis</span>
-                        </div>
-                    </div>
-                </div>
+})();
+(function(){
+    const sidebar = document.getElementById('sidebar');
+    const collapseBtn = document.getElementById('collapseBtn');
+    const focusBtn = document.getElementById('focusBtn');
+    const mobileOpen = document.getElementById('mobileOpen');
 
-                <!-- Quick Actions -->
-                <div class="mb-8">
-                    <h3 class="text-lg font-semibold mb-4 text-gray-700">Aksi Cepat</h3>
-                    <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-                        <a href="transaksi_baru.php" class="quick-action-card bg-white rounded-lg shadow p-4 text-center hover:border-primary-300">
-                            <div class="text-primary-600 mb-2">
-                                <i class="fas fa-cash-register text-3xl"></i>
-                            </div>
-                            <p class="font-medium text-gray-700">Transaksi Baru</p>
-                            <p class="text-xs text-gray-500 mt-1">Buat transaksi baru</p>
-                        </a>
-                        <a href="produk.php" class="quick-action-card bg-white rounded-lg shadow p-4 text-center hover:border-blue-300">
-                            <div class="text-blue-600 mb-2">
-                                <i class="fas fa-search text-3xl"></i>
-                            </div>
-                            <p class="font-medium text-gray-700">Cari Produk</p>
-                            <p class="text-xs text-gray-500 mt-1">Temukan produk cepat</p>
-                        </a>
-                        <a href="daftar_transaksi.php" class="quick-action-card bg-white rounded-lg shadow p-4 text-center hover:border-green-300">
-                            <div class="text-green-600 mb-2">
-                                <i class="fas fa-history text-3xl"></i>
-                            </div>
-                            <p class="font-medium text-gray-700">Riwayat Transaksi</p>
-                            <p class="text-xs text-gray-500 mt-1">Lihat transaksi lalu</p>
-                        </a>
-                        <a href="laporan_harian.php" class="quick-action-card bg-white rounded-lg shadow p-4 text-center hover:border-orange-300">
-                            <div class="text-orange-600 mb-2">
-                                <i class="fas fa-chart-bar text-3xl"></i>
-                            </div>
-                            <p class="font-medium text-gray-700">Laporan Harian</p>
-                            <p class="text-xs text-gray-500 mt-1">Ringkasan penjualan</p>
-                        </a>
-                    </div>
-                </div>
+    // Collapse sidebar on desktop
+    collapseBtn.addEventListener('click', () => {
+        sidebar.classList.toggle('w-64');
+        sidebar.classList.toggle('w-20');
+    });
 
-                <!-- Recent Transactions -->
-                <div class="bg-white rounded-lg shadow overflow-hidden">
-                    <div class="p-4 border-b flex justify-between items-center bg-gradient-to-r from-primary-600 to-primary-700">
-                        <h3 class="font-semibold text-white">Transaksi Terakhir</h3>
-                        <a href="daftar_transaksi.php" class="text-sm text-purple-200 hover:text-white hover:underline">Lihat Semua</a>
-                    </div>
-                    <div class="overflow-x-auto">
-                        <table class="min-w-full divide-y divide-gray-200">
-                            <thead class="bg-gray-50">
-                                <tr>
-                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ID</th>
-                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Waktu</th>
-                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Items</th>
-                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total</th>
-                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                                </tr>
-                            </thead>
-                            <tbody class="bg-white divide-y divide-gray-200">
-                                <!-- Sample Data - Replace with actual PHP loop -->
-                                <tr class="hover:bg-gray-50">
-                                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-primary-600">#TRX-20230801-001</td>
-                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">10:25 AM</td>
-                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">3 Items</td>
-                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">Rp 125.000</td>
-                                    <td class="px-6 py-4 whitespace-nowrap">
-                                        <span class="px-2 py-1 text-xs rounded-full bg-green-100 text-green-800">Selesai</span>
-                                    </td>
-                                </tr>
-                                <tr class="hover:bg-gray-50">
-                                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-primary-600">#TRX-20230801-002</td>
-                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">11:42 AM</td>
-                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">5 Items</td>
-                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">Rp 87.500</td>
-                                    <td class="px-6 py-4 whitespace-nowrap">
-                                        <span class="px-2 py-1 text-xs rounded-full bg-green-100 text-green-800">Selesai</span>
-                                    </td>
-                                </tr>
-                                <tr class="hover:bg-gray-50">
-                                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-primary-600">#TRX-20230801-003</td>
-                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">01:15 PM</td>
-                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">2 Items</td>
-                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">Rp 42.000</td>
-                                    <td class="px-6 py-4 whitespace-nowrap">
-                                        <span class="px-2 py-1 text-xs rounded-full bg-yellow-100 text-yellow-800">Pending</span>
-                                    </td>
-                                </tr>
-                                <!-- Add more rows with PHP foreach -->
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </main>
-        </div>
-    </div>
+    // Toggle focus mode
+    focusBtn.addEventListener('click', () => {
+        document.body.classList.toggle('focus-mode');
+    });
 
-    <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            // Add any interactive functionality here
-            const currentPage = window.location.pathname.split('/').pop();
-            const menuItems = document.querySelectorAll('nav a');
-            
-            menuItems.forEach(item => {
-                if (item.getAttribute('href') === currentPage) {
-                    item.classList.add('active-menu');
-                } else {
-                    item.classList.remove('active-menu');
-                }
-            });
-        });
-    </script>
+    // Mobile sidebar open
+    mobileOpen.addEventListener('click', () => {
+        sidebar.classList.toggle('-translate-x-full');
+    });
+})();
+</script>
+
 </body>
 </html>
