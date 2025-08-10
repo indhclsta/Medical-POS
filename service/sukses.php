@@ -75,7 +75,7 @@ $total_after_discount = $subtotal_before_discount - $discount_amount;
 <body class="bg-gray-100">
     <div class="container mx-auto p-4">
         <div class="flex justify-between mb-4 no-print">
-            <a href="../transaksi.php" class="px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600">
+            <a href="../cashier/transaksi.php" class="px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600">
                 <i class="fas fa-arrow-left mr-2"></i>Kembali ke Transaksi
             </a>
             <div class="space-x-2">

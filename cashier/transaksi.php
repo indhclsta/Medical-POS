@@ -443,7 +443,7 @@ if (!empty($_SESSION['cart'])) {
                 </div>
                 
                 <nav>
-                    <a href="dashboard_kasir.php" class="block py-2 px-3 mb-1 rounded hover:bg-purple-100 transition-colors">
+                    <a href="dashboard.php" class="block py-2 px-3 mb-1 rounded hover:bg-purple-100 transition-colors">
                         <i class="fas fa-tachometer-alt mr-2"></i> Dashboard
                     </a>
                     <a href="transaksi.php" class="block py-2 px-3 mb-1 rounded active-menu">
@@ -671,8 +671,7 @@ if (!empty($_SESSION['cart'])) {
                         <span class="font-semibold">Total:</span>
                         <span id="cartTotal" class="text-xl font-bold text-purple-600"><?= format_currency($total) ?></span>
                     </div>
-                    
-                    <form action="checkout.php" method="POST" class="w-full">
+                    <form action="checkout.php" method="POST" class="w-full" onsubmit="return validateCartBeforeCheckout()">
                         <button type="submit" class="block w-full py-3 bg-purple-600 text-white text-center rounded-lg hover:bg-purple-700 mt-4 mb-2 checkout-btn">
                             <i class="fas fa-credit-card mr-2"></i> Proses Pembayaran
                         </button>
@@ -925,6 +924,15 @@ if (!empty($_SESSION['cart'])) {
             return 'Rp ' + amount.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".");
         }
         
+        // Validasi sebelum checkout
+        function validateCartBeforeCheckout() {
+            if (<?= count($_SESSION['cart']) ?> === 0) {
+                showAlert('Keranjang belanja kosong, tidak bisa proses pembayaran!');
+                return false;
+            }
+            return true;
+        }
+
         // Initialize
         document.addEventListener('DOMContentLoaded', function() {
             startCartTimer();

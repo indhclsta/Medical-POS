@@ -169,6 +169,32 @@ try {
     header("Location: ../cashier/checkout.php");
     exit();
 
+    // Di akhir try block setelah commit transaksi:
+$conn->commit();
+
+// Simpan data struk di session (untuk backup)
+$_SESSION['receipt_data'] = [
+    'transaction_id' => $transaction_id,
+    'date' => date('d/m/Y H:i:s'),
+    'cashier' => $_SESSION['username'],
+    'member_phone' => $phone,
+    'items' => array_map(function($item) {
+        return [
+            'name' => $item['name'],
+            'quantity' => $item['quantity'],
+            'price' => $item['price'],
+            'subtotal' => $item['price'] * $item['quantity']
+        ];
+    }, $_SESSION['cart']),
+    'total' => $total,
+    'amount_paid' => $amount,
+    'change' => $change
+];
+
+// Redirect ke halaman sukses
+header("Location: ../cashier/sukses.php?id=" . $transaction_id);
+exit();
+
 } catch (Exception $e) {
     $conn->rollback();
     $_SESSION['error_message'] = $e->getMessage();

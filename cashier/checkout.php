@@ -144,8 +144,8 @@ function format_currency($amount) {
 // Handle receipt display after payment
 $show_receipt = false;
 $receipt_data = [];
-
-if (isset($_SESSION['receipt_data'])) {
+// Modal struk hanya muncul jika transaksi sudah berhasil dan receipt_data sudah di-set
+if (!empty($_SESSION['receipt_data']) && is_array($_SESSION['receipt_data'])) {
     $show_receipt = true;
     $receipt_data = $_SESSION['receipt_data'];
     unset($_SESSION['receipt_data']);
@@ -379,92 +379,7 @@ if (isset($_SESSION['receipt_data'])) {
     </style>
 </head>
 <body class="bg-gray-50 font-sans">
-    <!-- Receipt Modal -->
-    <?php if ($show_receipt): ?>
-    <div class="receipt-modal active" id="receiptModal">
-        <div class="receipt-container">
-            <div class="receipt-header">
-                <h3 class="text-xl font-bold">MediPOS</h3>
-                <p class="text-sm">Struk Pembayaran</p>
-            </div>
-            <div class="receipt-body">
-                <div class="mb-2">
-                    <div class="receipt-item">
-                        <span>No. Transaksi:</span>
-                        <span><?= $receipt_data['transaction_id'] ?></span>
-                    </div>
-                    <div class="receipt-item">
-                        <span>Tanggal:</span>
-                        <span><?= $receipt_data['date'] ?></span>
-                    </div>
-                    <div class="receipt-item">
-                        <span>Kasir:</span>
-                        <span><?= $receipt_data['cashier'] ?></span>
-                    </div>
-                    
-                    <?php if (!empty($receipt_data['member_phone'])): ?>
-                    <div class="receipt-item">
-                        <span>Member:</span>
-                        <span><?= $receipt_data['member_phone'] ?></span>
-                    </div>
-                    <?php endif; ?>
-                </div>
-                
-                <div class="receipt-divider"></div>
-                
-                <div class="mb-2">
-                    <?php foreach ($receipt_data['items'] as $item): ?>
-                    <div class="receipt-item">
-                        <span><?= $item['name'] ?> (<?= $item['quantity'] ?> x <?= format_currency($item['price']) ?>)</span>
-                        <span><?= format_currency($item['subtotal']) ?></span>
-                    </div>
-                    <?php endforeach; ?>
-                </div>
-                
-                <div class="receipt-divider"></div>
-                
-                <div class="mb-2">
-                    <div class="receipt-item">
-                        <span>Subtotal:</span>
-                        <span><?= format_currency($receipt_data['subtotal']) ?></span>
-                    </div>
-                    
-                    <?php if ($receipt_data['discount'] > 0): ?>
-                    <div class="receipt-item">
-                        <span>Diskon (<?= ($receipt_data['discount'] * 100) ?>%):</span>
-                        <span>- <?= format_currency($receipt_data['discount_amount']) ?></span>
-                    </div>
-                    <?php endif; ?>
-                    
-                    <div class="receipt-item receipt-total">
-                        <span>TOTAL:</span>
-                        <span><?= format_currency($receipt_data['total']) ?></span>
-                    </div>
-                    
-                    <div class="receipt-item">
-                        <span>Tunai:</span>
-                        <span><?= format_currency($receipt_data['amount_paid']) ?></span>
-                    </div>
-                    
-                    <div class="receipt-item">
-                        <span>Kembali:</span>
-                        <span><?= format_currency($receipt_data['change']) ?></span>
-                    </div>
-                </div>
-            </div>
-            <div class="receipt-footer">
-                <p>Terima kasih telah berbelanja</p>
-                <p>Barang yang sudah dibeli tidak dapat ditukar atau dikembalikan</p>
-                <button class="print-btn" onclick="window.print()">
-                    <i class="fas fa-print mr-2"></i> Cetak Struk
-                </button>
-                <button class="print-btn ml-2 bg-gray-600" onclick="closeReceipt()">
-                    <i class="fas fa-times mr-2"></i> Tutup
-                </button>
-            </div>
-        </div>
-    </div>
-    <?php endif; ?>
+   
 
     <div class="flex h-screen overflow-hidden">
         <!-- Sidebar Navigation -->
@@ -693,7 +608,92 @@ if (isset($_SESSION['receipt_data'])) {
             </main>
         </div>
     </div>
-
+ <!-- Receipt Modal -->
+    <?php if ($show_receipt): ?>
+    <div class="receipt-modal active" id="receiptModal">
+        <div class="receipt-container">
+            <div class="receipt-header">
+                <h3 class="text-xl font-bold">MediPOS</h3>
+                <p class="text-sm">Struk Pembayaran</p>
+            </div>
+            <div class="receipt-body">
+                <div class="mb-2">
+                    <div class="receipt-item">
+                        <span>No. Transaksi:</span>
+                        <span><?= $receipt_data['transaction_id'] ?></span>
+                    </div>
+                    <div class="receipt-item">
+                        <span>Tanggal:</span>
+                        <span><?= $receipt_data['date'] ?></span>
+                    </div>
+                    <div class="receipt-item">
+                        <span>Kasir:</span>
+                        <span><?= $receipt_data['cashier'] ?></span>
+                    </div>
+                    
+                    <?php if (!empty($receipt_data['member_phone'])): ?>
+                    <div class="receipt-item">
+                        <span>Member:</span>
+                        <span><?= $receipt_data['member_phone'] ?></span>
+                    </div>
+                    <?php endif; ?>
+                </div>
+                
+                <div class="receipt-divider"></div>
+                
+                <div class="mb-2">
+                    <?php foreach ($receipt_data['items'] as $item): ?>
+                    <div class="receipt-item">
+                        <span><?= $item['name'] ?> (<?= $item['quantity'] ?> x <?= format_currency($item['price']) ?>)</span>
+                        <span><?= format_currency($item['subtotal']) ?></span>
+                    </div>
+                    <?php endforeach; ?>
+                </div>
+                
+                <div class="receipt-divider"></div>
+                
+                <div class="mb-2">
+                    <div class="receipt-item">
+                        <span>Subtotal:</span>
+                        <span><?= format_currency($receipt_data['subtotal']) ?></span>
+                    </div>
+                    
+                    <?php if ($receipt_data['discount'] > 0): ?>
+                    <div class="receipt-item">
+                        <span>Diskon (<?= ($receipt_data['discount'] * 100) ?>%):</span>
+                        <span>- <?= format_currency($receipt_data['discount_amount']) ?></span>
+                    </div>
+                    <?php endif; ?>
+                    
+                    <div class="receipt-item receipt-total">
+                        <span>TOTAL:</span>
+                        <span><?= format_currency($receipt_data['total']) ?></span>
+                    </div>
+                    
+                    <div class="receipt-item">
+                        <span>Tunai:</span>
+                        <span><?= format_currency($receipt_data['amount_paid']) ?></span>
+                    </div>
+                    
+                    <div class="receipt-item">
+                        <span>Kembali:</span>
+                        <span><?= format_currency($receipt_data['change']) ?></span>
+                    </div>
+                </div>
+            </div>
+            <div class="receipt-footer">
+                <p>Terima kasih telah berbelanja</p>
+                <p>Barang yang sudah dibeli tidak dapat ditukar atau dikembalikan</p>
+                <button class="print-btn" onclick="window.print()">
+                    <i class="fas fa-print mr-2"></i> Cetak Struk
+                </button>
+                <button class="print-btn ml-2 bg-gray-600" onclick="closeReceipt()">
+                    <i class="fas fa-times mr-2"></i> Tutup
+                </button>
+            </div>
+        </div>
+    </div>
+    <?php endif; ?>
     <script>
         // Timer functionality
         function startCartTimer() {
