@@ -82,11 +82,11 @@ if (isset($_FILES['image']) && $_FILES['image']['error'] === UPLOAD_ERR_OK) {
 $hashed_password = password_hash($password, PASSWORD_DEFAULT);
 
 // Insert new admin
-$stmt = $conn->prepare("INSERT INTO admin (username, email, password, image, role, status) VALUES (?, ?, ?, ?, ?, 'pending')");
+$stmt = $conn->prepare("INSERT INTO admin (username, email, password, image, role, status) VALUES (?, ?, ?, ?, ?, 'active')");
 $stmt->bind_param("sssss", $username, $email, $hashed_password, $image, $role);
 
 if ($stmt->execute()) {
-    $_SESSION['success'] = "Kasir baru berhasil ditambahkan dan menunggu verifikasi";
+    $_SESSION['success'] = "Kasir baru berhasil ditambahkan";
 } else {
     $_SESSION['error'] = "Gagal menambahkan kasir: " . $conn->error;
 }

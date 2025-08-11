@@ -147,19 +147,21 @@ while ($row = mysqli_fetch_assoc($recent_logs_query)) {
        <!-- Main Content -->
         <div class="ml-64 flex-1 overflow-y-auto">
             <header class="bg-white shadow-sm">
-                <div class="flex justify-between items-center px-6 py-4">
-                    <h2 class="text-xl font-semibold text-gray-800">Kelola Kasir</h2>
-                    <div class="flex items-center space-x-4">
-                        <span class="text-sm text-gray-500" id="currentDateTime"></span>
-                        <div class="relative">
-                            <img src="../uploads/<?= htmlspecialchars($admin_data['image']) ?>" 
-                                 alt="Profile" 
-                                 class="w-8 h-8 rounded-full border-2 border-purple-500">
-                            <span class="absolute bottom-0 right-0 w-3 h-3 bg-green-500 rounded-full"></span>
-                        </div>
-                    </div>
-                </div>
-            </header>
+    <div class="flex justify-between items-center px-6 py-4">
+        <h2 class="text-xl font-semibold text-gray-800">Kelola Kasir</h2>
+        <div class="flex items-center space-x-4">
+            <span class="text-sm text-gray-500" id="currentDateTime"></span>
+            <div class="relative">
+                <a href="profile.php">
+                    <img src="../uploads/<?= htmlspecialchars($admin['image']) ?>" 
+                         alt="Profile" 
+                         class="w-8 h-8 rounded-full border-2 border-purple-500 cursor-pointer">
+                    <span class="absolute bottom-0 right-0 w-3 h-3 bg-green-500 rounded-full"></span>
+                </a>
+            </div>
+        </div>
+    </div>
+</header>
 
             <main class="p-6">
                 <!-- Welcome Card -->
