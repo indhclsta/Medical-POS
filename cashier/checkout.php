@@ -1,7 +1,6 @@
 <?php
 session_start();
 include '../service/connection.php';
-error_log("Current session: " . print_r($_SESSION, true));
 
 // Security checks
 if (!isset($_SESSION['email']) || $_SESSION['role'] !== 'cashier') {
@@ -10,7 +9,7 @@ if (!isset($_SESSION['email']) || $_SESSION['role'] !== 'cashier') {
 }
 
 // Set cart expiration time (5 minutes)
-$cart_expiration = 300; // 5 minutes in seconds
+$cart_expiration = 300;
 
 // Check if cart should be cleared
 if (isset($_SESSION['cart_expiry'])) {
@@ -140,18 +139,7 @@ $total_after_discount = ceil($subtotal * (1 - $discount));
 function format_currency($amount) {
     return 'Rp ' . number_format($amount, 0, ',', '.');
 }
-
-// Handle receipt display after payment
-$show_receipt = false;
-$receipt_data = [];
-// Modal struk hanya muncul jika transaksi sudah berhasil dan receipt_data sudah di-set
-if (!empty($_SESSION['receipt_data']) && is_array($_SESSION['receipt_data'])) {
-    $show_receipt = true;
-    $receipt_data = $_SESSION['receipt_data'];
-    unset($_SESSION['receipt_data']);
-}
 ?>
-
 <!DOCTYPE html>
 <html lang="id">
 <head>
@@ -261,126 +249,9 @@ if (!empty($_SESSION['receipt_data']) && is_array($_SESSION['receipt_data'])) {
             border: 1px solid #e5e7eb;
             margin-bottom: 8px;
         }
-        
-        /* Receipt Modal Styles */
-        .receipt-modal {
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background-color: rgba(0,0,0,0.5);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            z-index: 2000;
-            opacity: 0;
-            pointer-events: none;
-            transition: opacity 0.3s ease;
-        }
-        
-        .receipt-modal.active {
-            opacity: 1;
-            pointer-events: all;
-        }
-        
-        .receipt-container {
-            background-color: white;
-            width: 90%;
-            max-width: 400px;
-            border-radius: 8px;
-            box-shadow: 0 10px 25px rgba(0,0,0,0.2);
-            overflow: hidden;
-            transform: translateY(20px);
-            transition: transform 0.3s ease;
-        }
-        
-        .receipt-modal.active .receipt-container {
-            transform: translateY(0);
-        }
-        
-        .receipt-header {
-            background-color: #7C3AED;
-            color: white;
-            padding: 15px;
-            text-align: center;
-            border-bottom: 2px dashed #e5e7eb;
-        }
-        
-        .receipt-body {
-            padding: 20px;
-            font-family: 'Courier New', monospace;
-        }
-        
-        .receipt-item {
-            display: flex;
-            justify-content: space-between;
-            margin-bottom: 5px;
-            font-size: 14px;
-        }
-        
-        .receipt-divider {
-            border-top: 1px dashed #e5e7eb;
-            margin: 10px 0;
-        }
-        
-        .receipt-total {
-            font-weight: bold;
-            font-size: 16px;
-        }
-        
-        .receipt-footer {
-            text-align: center;
-            padding: 15px;
-            font-size: 12px;
-            color: #6b7280;
-            border-top: 2px dashed #e5e7eb;
-        }
-        
-        .print-btn {
-            background-color: #7C3AED;
-            color: white;
-            border: none;
-            padding: 10px 20px;
-            border-radius: 5px;
-            cursor: pointer;
-            margin-top: 15px;
-            font-weight: bold;
-            transition: background-color 0.2s;
-        }
-        
-        .print-btn:hover {
-            background-color: #6B21A8;
-        }
-        
-        @media print {
-            body * {
-                visibility: hidden;
-            }
-            .receipt-modal, .receipt-modal * {
-                visibility: visible;
-            }
-            .receipt-modal {
-                position: absolute;
-                left: 0;
-                top: 0;
-                width: 100%;
-                height: 100%;
-                background-color: white;
-            }
-            .receipt-container {
-                box-shadow: none;
-                max-width: 100%;
-            }
-            .print-btn {
-                display: none;
-            }
-        }
     </style>
 </head>
 <body class="bg-gray-50 font-sans">
-   
-
     <div class="flex h-screen overflow-hidden">
         <!-- Sidebar Navigation -->
         <div class="sidebar w-64 bg-white shadow-lg">
@@ -400,7 +271,7 @@ if (!empty($_SESSION['receipt_data']) && is_array($_SESSION['receipt_data'])) {
                 </div>
                 
                 <nav>
-                    <a href="dashboard_kasir.php" class="block py-2 px-3 mb-1 rounded hover:bg-purple-100 transition-colors">
+                    <a href="dashboard.php" class="block py-2 px-3 mb-1 rounded hover:bg-purple-100 transition-colors">
                         <i class="fas fa-tachometer-alt mr-2"></i> Dashboard
                     </a>
                     <a href="transaksi.php" class="block py-2 px-3 mb-1 rounded hover:bg-purple-100 transition-colors">
@@ -583,9 +454,8 @@ if (!empty($_SESSION['receipt_data']) && is_array($_SESSION['receipt_data'])) {
                             <div class="mb-4">
                                 <label class="block text-gray-700 mb-2">Metode Pembayaran</label>
                                 <select name="payment_method" class="w-full p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-600" required>
-                                    <option value="cash">Tunai</option>
+                                    <option value="tunai">Tunai</option>
                                     <option value="qris">QRIS</option>
-                                    <option value="debit">Kartu Debit</option>
                                 </select>
                             </div>
 
@@ -608,92 +478,7 @@ if (!empty($_SESSION['receipt_data']) && is_array($_SESSION['receipt_data'])) {
             </main>
         </div>
     </div>
- <!-- Receipt Modal -->
-    <?php if ($show_receipt): ?>
-    <div class="receipt-modal active" id="receiptModal">
-        <div class="receipt-container">
-            <div class="receipt-header">
-                <h3 class="text-xl font-bold">MediPOS</h3>
-                <p class="text-sm">Struk Pembayaran</p>
-            </div>
-            <div class="receipt-body">
-                <div class="mb-2">
-                    <div class="receipt-item">
-                        <span>No. Transaksi:</span>
-                        <span><?= $receipt_data['transaction_id'] ?></span>
-                    </div>
-                    <div class="receipt-item">
-                        <span>Tanggal:</span>
-                        <span><?= $receipt_data['date'] ?></span>
-                    </div>
-                    <div class="receipt-item">
-                        <span>Kasir:</span>
-                        <span><?= $receipt_data['cashier'] ?></span>
-                    </div>
-                    
-                    <?php if (!empty($receipt_data['member_phone'])): ?>
-                    <div class="receipt-item">
-                        <span>Member:</span>
-                        <span><?= $receipt_data['member_phone'] ?></span>
-                    </div>
-                    <?php endif; ?>
-                </div>
-                
-                <div class="receipt-divider"></div>
-                
-                <div class="mb-2">
-                    <?php foreach ($receipt_data['items'] as $item): ?>
-                    <div class="receipt-item">
-                        <span><?= $item['name'] ?> (<?= $item['quantity'] ?> x <?= format_currency($item['price']) ?>)</span>
-                        <span><?= format_currency($item['subtotal']) ?></span>
-                    </div>
-                    <?php endforeach; ?>
-                </div>
-                
-                <div class="receipt-divider"></div>
-                
-                <div class="mb-2">
-                    <div class="receipt-item">
-                        <span>Subtotal:</span>
-                        <span><?= format_currency($receipt_data['subtotal']) ?></span>
-                    </div>
-                    
-                    <?php if ($receipt_data['discount'] > 0): ?>
-                    <div class="receipt-item">
-                        <span>Diskon (<?= ($receipt_data['discount'] * 100) ?>%):</span>
-                        <span>- <?= format_currency($receipt_data['discount_amount']) ?></span>
-                    </div>
-                    <?php endif; ?>
-                    
-                    <div class="receipt-item receipt-total">
-                        <span>TOTAL:</span>
-                        <span><?= format_currency($receipt_data['total']) ?></span>
-                    </div>
-                    
-                    <div class="receipt-item">
-                        <span>Tunai:</span>
-                        <span><?= format_currency($receipt_data['amount_paid']) ?></span>
-                    </div>
-                    
-                    <div class="receipt-item">
-                        <span>Kembali:</span>
-                        <span><?= format_currency($receipt_data['change']) ?></span>
-                    </div>
-                </div>
-            </div>
-            <div class="receipt-footer">
-                <p>Terima kasih telah berbelanja</p>
-                <p>Barang yang sudah dibeli tidak dapat ditukar atau dikembalikan</p>
-                <button class="print-btn" onclick="window.print()">
-                    <i class="fas fa-print mr-2"></i> Cetak Struk
-                </button>
-                <button class="print-btn ml-2 bg-gray-600" onclick="closeReceipt()">
-                    <i class="fas fa-times mr-2"></i> Tutup
-                </button>
-            </div>
-        </div>
-    </div>
-    <?php endif; ?>
+
     <script>
         // Timer functionality
         function startCartTimer() {
@@ -773,13 +558,6 @@ if (!empty($_SESSION['receipt_data']) && is_array($_SESSION['receipt_data'])) {
             return 'Rp ' + amount.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".");
         }
 
-        // Receipt modal functions
-        function closeReceipt() {
-            document.getElementById('receiptModal').classList.remove('active');
-            // Redirect to clear the receipt data from session
-            window.location.href = 'checkout.php';
-        }
-        
         // Initialize
         document.addEventListener('DOMContentLoaded', function() {
             startCartTimer();
@@ -788,11 +566,6 @@ if (!empty($_SESSION['receipt_data']) && is_array($_SESSION['receipt_data'])) {
             if (document.getElementById("amount")) {
                 document.getElementById("amount").focus();
             }
-            
-            <?php if ($show_receipt): ?>
-            // Optionally auto-print the receipt
-            // window.print();
-            <?php endif; ?>
         });
     </script>
 </body>

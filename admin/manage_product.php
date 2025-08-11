@@ -68,6 +68,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             exit();
         }
 
+        // Check for duplicate barcode
+        $cekBarcode = mysqli_query($conn, "SELECT id FROM products WHERE barcode = '$barcode'");
+        if (mysqli_num_rows($cekBarcode) > 0) {
+            $_SESSION['error'] = "Barcode sudah ada, tidak boleh duplikat.";
+            header("Location: manage_product.php");
+            exit();
+        }
+
         // Handle file upload
         $imageName = '';
         if (!empty($_FILES['gambarProduk']['name'])) {
@@ -113,6 +121,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $cekNama = mysqli_query($conn, "SELECT id FROM products WHERE product_name = '$productName' AND id != $productId");
         if (mysqli_num_rows($cekNama) > 0) {
             $_SESSION['error'] = "Nama produk sudah ada, tidak boleh duplikat.";
+            header("Location: manage_product.php?edit=$productId");
+            exit();
+        }
+
+        // Check for duplicate barcode (excluding current product)
+        $cekBarcode = mysqli_query($conn, "SELECT id FROM products WHERE barcode = '$barcode' AND id != $productId");
+        if (mysqli_num_rows($cekBarcode) > 0) {
+            $_SESSION['error'] = "Barcode sudah ada, tidak boleh duplikat.";
             header("Location: manage_product.php?edit=$productId");
             exit();
         }
@@ -196,7 +212,7 @@ if (isset($_GET['hapus'])) {
     $query = "SELECT qty, image, barcode_image FROM products WHERE id = $productId";
     $result = mysqli_query($conn, $query);
     $product = mysqli_fetch_assoc($result);
-    
+
     if ($product['qty'] > 0) {
         $_SESSION['error'] = "Produk tidak bisa dihapus karena stok masih ada.";
         header("Location: manage_product.php");
@@ -209,14 +225,14 @@ if (isset($_GET['hapus'])) {
             unlink($imagePath);
         }
     }
-    
+
     if (!empty($product['barcode_image'])) {
         $barcodePath = "../uploads/barcodes/" . $product['barcode_image'];
         if (file_exists($barcodePath)) {
             unlink($barcodePath);
         }
     }
-    
+
     // Delete from database
     $query = "DELETE FROM products WHERE id = $productId";
     if (mysqli_query($conn, $query)) {
@@ -254,25 +270,32 @@ if (isset($_SESSION['error'])) {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             background-color: #f8fafc;
         }
+
         .sidebar {
             background-color: #6b46c1;
             color: white;
         }
+
         .sidebar a:hover {
             background-color: #805ad5;
         }
+
         .stat-card {
             border-left: 4px solid #6b46c1;
         }
+
         .bg-super-admin {
             background-color: #6b46c1;
         }
+
         .text-super-admin {
             color: #6b46c1;
         }
+
         .nav-active {
             background-color: #805ad5;
         }
+
         .product-image {
             width: 40px;
             height: 40px;
@@ -280,27 +303,33 @@ if (isset($_SESSION['error'])) {
             border-radius: 4px;
             border: 1px solid #E5E7EB;
         }
+
         .line-clamp-2 {
             display: -webkit-box;
             -webkit-line-clamp: 2;
             -webkit-box-orient: vertical;
             overflow: hidden;
         }
+
         .modal {
             background-color: rgba(0, 0, 0, 0.5);
         }
+
         .badge-primary {
             background-color: #E9D5FF;
             color: #7E22CE;
         }
+
         .badge-active {
             background-color: #D1FAE5;
             color: #065F46;
         }
+
         .badge-warning {
             background-color: #FEF3C7;
             color: #92400E;
         }
+
         .badge-danger {
             background-color: #FEE2E2;
             color: #B91C1C;
@@ -317,7 +346,7 @@ if (isset($_SESSION['error'])) {
                     <span class="text-white">Medi</span><span class="text-purple-300">POS</span>
                 </h1>
             </div>
-            
+
             <!-- Profile Section -->
             <div class="flex items-center px-4 py-3 mb-6 rounded-lg bg-purple-900">
                 <img src="<?= $image ?>" alt="Profile" class="w-10 h-10 rounded-full border-2 border-purple-300">
@@ -385,7 +414,7 @@ if (isset($_SESSION['error'])) {
                         </div>
                     </div>
                 <?php endif; ?>
-                
+
                 <?php if (!empty($errorMessage)): ?>
                     <div class="fixed top-4 right-4 z-50">
                         <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative" role="alert">
@@ -461,7 +490,7 @@ if (isset($_SESSION['error'])) {
                                                     </div>
                                                 <?php endif; ?>
                                             </td>
-                                            
+
                                             <!-- Product Info Column -->
                                             <td class="px-4 py-3">
                                                 <div class="font-medium text-gray-900"><?= htmlspecialchars($row['product_name']) ?></div>
@@ -469,21 +498,21 @@ if (isset($_SESSION['error'])) {
                                                     <?= !empty($row['description']) ? htmlspecialchars($row['description']) : '-' ?>
                                                 </div>
                                             </td>
-                                            
+
                                             <!-- Category Column -->
                                             <td class="px-4 py-3">
                                                 <span class="badge-primary px-2 py-1 rounded-full text-xs">
                                                     <?= !empty($row['category_name']) ? htmlspecialchars($row['category_name']) : 'Uncategorized' ?>
                                                 </span>
                                             </td>
-                                            
+
                                             <!-- Price Column -->
                                             <td class="px-4 py-3">
                                                 <div class="font-semibold">Rp <?= number_format($row['selling_price'], 0, ',', '.') ?></div>
                                                 <div class="text-xs text-gray-500">Modal: Rp <?= number_format($row['starting_price'], 0, ',', '.') ?></div>
                                                 <div class="text-xs text-blue-600 font-medium">Margin: Rp <?= number_format($row['margin'], 0, ',', '.') ?></div>
                                             </td>
-                                            
+
                                             <!-- Stock Column -->
                                             <td class="px-4 py-3 text-center">
                                                 <?php if ($row['qty'] > 10): ?>
@@ -494,7 +523,7 @@ if (isset($_SESSION['error'])) {
                                                     <span class="badge-danger px-2 py-1 rounded-full text-xs">Habis</span>
                                                 <?php endif; ?>
                                             </td>
-                                            
+
                                             <!-- Expiry Column -->
                                             <td class="px-4 py-3 text-center">
                                                 <?php if (!empty($row['exp'])): ?>
@@ -505,7 +534,7 @@ if (isset($_SESSION['error'])) {
                                                     <span class="text-xs text-gray-500">-</span>
                                                 <?php endif; ?>
                                             </td>
-                                            
+
                                             <!-- Barcode Column -->
                                             <td class="px-4 py-3 text-center">
                                                 <?php
@@ -521,7 +550,7 @@ if (isset($_SESSION['error'])) {
                                                     <span class="text-xs text-gray-500">-</span>
                                                 <?php endif; ?>
                                             </td>
-                                            
+
                                             <!-- Actions Column -->
                                             <td class="px-4 py-3 text-right">
                                                 <div class="flex justify-end space-x-2">
@@ -546,7 +575,7 @@ if (isset($_SESSION['error'])) {
                             </tbody>
                         </table>
                     </div>
-                    
+
                     <!-- Pagination -->
                     <div class="bg-white px-4 py-3 flex items-center justify-between border-t border-gray-200">
                         <div class="flex-1 flex justify-between sm:hidden">
@@ -560,8 +589,8 @@ if (isset($_SESSION['error'])) {
                         <div class="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
                             <div>
                                 <p class="text-sm text-gray-700">
-                                    Menampilkan <span class="font-medium"><?= ($offset + 1) ?></span> sampai 
-                                    <span class="font-medium"><?= min($offset + $limit, $totalData) ?></span> dari 
+                                    Menampilkan <span class="font-medium"><?= ($offset + 1) ?></span> sampai
+                                    <span class="font-medium"><?= min($offset + $limit, $totalData) ?></span> dari
                                     <span class="font-medium"><?= $totalData ?></span> produk
                                 </p>
                             </div>
@@ -571,23 +600,23 @@ if (isset($_SESSION['error'])) {
                                         <span class="sr-only">Previous</span>
                                         <i class="fas fa-chevron-left"></i>
                                     </a>
-                                    
+
                                     <?php
                                     $startPage = max(1, $page - 2);
                                     $endPage = min($totalPages, $page + 2);
-                                    
+
                                     if ($startPage > 1) {
                                         echo '<a href="?page=1" class="relative inline-flex items-center px-4 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50">1</a>';
                                         if ($startPage > 2) {
                                             echo '<span class="relative inline-flex items-center px-4 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-500">...</span>';
                                         }
                                     }
-                                    
+
                                     for ($i = $startPage; $i <= $endPage; $i++) {
                                         $active = $i == $page ? 'bg-purple-100 border-purple-500 text-purple-600' : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50';
                                         echo '<a href="?page=' . $i . '" class="relative inline-flex items-center px-4 py-2 border text-sm font-medium ' . $active . '">' . $i . '</a>';
                                     }
-                                    
+
                                     if ($endPage < $totalPages) {
                                         if ($endPage < $totalPages - 1) {
                                             echo '<span class="relative inline-flex items-center px-4 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-500">...</span>';
@@ -595,7 +624,7 @@ if (isset($_SESSION['error'])) {
                                         echo '<a href="?page=' . $totalPages . '" class="relative inline-flex items-center px-4 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50">' . $totalPages . '</a>';
                                     }
                                     ?>
-                                    
+
                                     <a href="?page=<?= min($totalPages, $page + 1) ?>" class="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 <?= $page >= $totalPages ? 'opacity-50 cursor-not-allowed' : '' ?>">
                                         <span class="sr-only">Next</span>
                                         <i class="fas fa-chevron-right"></i>
@@ -625,7 +654,7 @@ if (isset($_SESSION['error'])) {
                     </button>
                 </div>
             </div>
-            
+
             <!-- Modal Body -->
             <form action="manage_product.php" method="POST" enctype="multipart/form-data" class="p-4 space-y-4 overflow-y-auto" style="max-height: 70vh;">
                 <!-- Product Name -->
@@ -638,13 +667,13 @@ if (isset($_SESSION['error'])) {
                         </div>
                     </div>
                 </div>
-                
+
                 <!-- Description -->
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1">Deskripsi*</label>
                     <textarea name="deskripsiProduk" class="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-purple-500 focus:border-transparent h-20" required placeholder="Deskripsi singkat"></textarea>
                 </div>
-                
+
                 <!-- Category -->
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1">Kategori*</label>
@@ -656,13 +685,13 @@ if (isset($_SESSION['error'])) {
                         <?php endwhile; ?>
                     </select>
                 </div>
-                
+
                 <!-- Stock -->
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1">Stok*</label>
                     <input type="number" name="stokProduk" class="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-purple-500 focus:border-transparent" required placeholder="Jumlah stok">
                 </div>
-                
+
                 <!-- Prices Row -->
                 <div class="grid grid-cols-2 gap-3">
                     <!-- Purchase Price -->
@@ -675,7 +704,7 @@ if (isset($_SESSION['error'])) {
                             <input type="number" name="hargaModalProduk" class="w-full px-3 py-2 pl-10 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-purple-500 focus:border-transparent" required placeholder="Harga modal">
                         </div>
                     </div>
-                    
+
                     <!-- Selling Price -->
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-1">Harga Jual*</label>
@@ -687,26 +716,26 @@ if (isset($_SESSION['error'])) {
                         </div>
                     </div>
                 </div>
-                
+
                 <!-- Expiry Date -->
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1">Tanggal Kadaluarsa</label>
                     <input type="date" name="exp" class="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-purple-500 focus:border-transparent">
                 </div>
-                
+
                 <!-- Product Image -->
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1">Gambar Produk*</label>
                     <input type="file" name="gambarProduk" class="w-full text-sm border border-gray-300 rounded-md file:mr-2 file:py-1.5 file:px-3 file:border-0 file:text-sm file:font-medium file:bg-purple-50 file:text-purple-700 hover:file:bg-purple-100" required>
                     <p class="text-xs text-gray-500 mt-1">Format: JPG/PNG (max 2MB)</p>
                 </div>
-                
+
                 <!-- Barcode -->
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1">Barcode (Opsional)</label>
                     <input type="text" name="barcodeInput" class="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-purple-500 focus:border-transparent" placeholder="Generate otomatis jika kosong">
                 </div>
-                
+
                 <!-- Modal Footer -->
                 <div class="flex justify-end gap-2 pt-3">
                     <button type="button" onclick="closeModal()" class="px-3 py-1.5 text-sm bg-gray-200 hover:bg-gray-300 text-gray-800 rounded-md flex items-center">
@@ -737,14 +766,14 @@ if (isset($_SESSION['error'])) {
                         </button>
                     </div>
                 </div>
-                
+
                 <!-- Modal Body -->
                 <form action="manage_product.php" method="POST" enctype="multipart/form-data" class="p-4 space-y-4 overflow-y-auto" style="max-height: 70vh;">
                     <input type="hidden" name="produk_id" value="<?= $editProduct['id'] ?>">
                     <input type="hidden" name="existing_image" value="<?= $editProduct['image'] ?>">
                     <input type="hidden" name="existing_barcode_image" value="<?= $editProduct['barcode_image'] ?>">
                     <input type="hidden" name="current_barcode" value="<?= $editProduct['barcode'] ?>">
-                    
+
                     <!-- Product Name -->
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-1 flex items-center">
@@ -759,7 +788,7 @@ if (isset($_SESSION['error'])) {
                             </div>
                         </div>
                     </div>
-                    
+
                     <!-- Description -->
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-1 flex items-center">
@@ -767,7 +796,7 @@ if (isset($_SESSION['error'])) {
                         </label>
                         <textarea name="deskripsiProdukEdit" class="w-full px-3 py-2 pl-9 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-purple-500 focus:border-transparent h-20" required><?= htmlspecialchars($editProduct['description']) ?></textarea>
                     </div>
-                    
+
                     <!-- Category -->
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-1 flex items-center">
@@ -782,7 +811,7 @@ if (isset($_SESSION['error'])) {
                             <?php endwhile; ?>
                         </select>
                     </div>
-                    
+
                     <!-- Stock -->
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-1 flex items-center">
@@ -792,7 +821,7 @@ if (isset($_SESSION['error'])) {
                             class="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                             required>
                     </div>
-                    
+
                     <!-- Prices Row -->
                     <div class="grid grid-cols-2 gap-3">
                         <!-- Purchase Price -->
@@ -809,7 +838,7 @@ if (isset($_SESSION['error'])) {
                                     required>
                             </div>
                         </div>
-                        
+
                         <!-- Selling Price -->
                         <div>
                             <label class="block text-sm font-medium text-gray-700 mb-1 flex items-center">
@@ -825,7 +854,7 @@ if (isset($_SESSION['error'])) {
                             </div>
                         </div>
                     </div>
-                    
+
                     <!-- Expiry Date -->
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-1 flex items-center">
@@ -834,7 +863,7 @@ if (isset($_SESSION['error'])) {
                         <input type="date" name="expEdit" value="<?= $editProduct['exp'] ?>"
                             class="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-purple-500 focus:border-transparent">
                     </div>
-                    
+
                     <!-- Product Image -->
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-1 flex items-center">
@@ -851,7 +880,7 @@ if (isset($_SESSION['error'])) {
                         </div>
                         <p class="text-xs text-gray-500 mt-1">Format: JPG/PNG (max 2MB)</p>
                     </div>
-                    
+
                     <!-- Barcode -->
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-1 flex items-center">
@@ -861,7 +890,7 @@ if (isset($_SESSION['error'])) {
                             class="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                             placeholder="Generate otomatis jika kosong">
                     </div>
-                    
+
                     <!-- Modal Footer -->
                     <div class="flex justify-end gap-2 pt-3 border-t border-gray-200">
                         <button type="button" onclick="closeModal()" class="px-3 py-1.5 text-sm bg-gray-200 hover:bg-gray-300 text-gray-800 rounded-md flex items-center">
@@ -880,7 +909,7 @@ if (isset($_SESSION['error'])) {
         // Update date and time
         function updateDateTime() {
             const now = new Date();
-            
+
             const options = {
                 weekday: 'long',
                 year: 'numeric',
@@ -889,10 +918,10 @@ if (isset($_SESSION['error'])) {
                 hour: '2-digit',
                 minute: '2-digit'
             };
-            
+
             document.getElementById('currentDateTime').textContent = now.toLocaleDateString('id-ID', options);
         }
-        
+
         setInterval(updateDateTime, 1000);
         updateDateTime();
 
@@ -903,7 +932,7 @@ if (isset($_SESSION['error'])) {
 
         function closeModal() {
             document.getElementById('modalTambahProduk').classList.add('hidden');
-            
+
             if (document.getElementById('modalEditProduk')) {
                 document.getElementById('modalEditProduk').classList.add('hidden');
             }
@@ -927,7 +956,7 @@ if (isset($_SESSION['error'])) {
         document.querySelectorAll('a[href*="hapus="]').forEach(link => {
             link.addEventListener('click', function(e) {
                 e.preventDefault();
-                
+
                 if (confirm('Yakin ingin menghapus produk ini?')) {
                     window.location.href = this.getAttribute('href');
                 }
@@ -937,11 +966,12 @@ if (isset($_SESSION['error'])) {
         // Logout confirmation
         document.querySelector('a[href="../service/logout.php"]').addEventListener('click', function(e) {
             e.preventDefault();
-            
+
             if (confirm('Anda yakin ingin logout?')) {
                 window.location.href = this.getAttribute('href');
             }
         });
     </script>
 </body>
+
 </html>

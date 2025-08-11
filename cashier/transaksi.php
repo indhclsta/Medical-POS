@@ -8,33 +8,6 @@ if (!isset($_SESSION['email']) || $_SESSION['role'] !== 'cashier') {
     exit();
 }
 
-if (session_status() === PHP_SESSION_NONE) {
-    session_start([
-        'cookie_httponly' => true,
-        'cookie_samesite' => 'Lax'
-    ]);
-}
-
-header("X-Frame-Options: DENY");
-header("X-Content-Type-Options: nosniff");
-
-if (!isset($_SESSION['logged_in'])) {
-    header("Location: ../service/login.php");
-    exit;
-}
-
-if ($_SESSION['role'] !== 'cashier') {
-    header("Location: ../unauthorized.php");
-    exit;
-}
-
-if ($_SESSION['ip_address'] !== $_SERVER['REMOTE_ADDR'] || 
-    $_SESSION['user_agent'] !== $_SERVER['HTTP_USER_AGENT']) {
-    session_destroy();
-    header("Location: ../service/login.php");
-    exit;
-}
-
 // Initialize cart timer if not exists
 if (!isset($_SESSION['cart_expiry'])) {
     $_SESSION['cart_expiry'] = time() + 300; // 5 minutes from now
@@ -55,14 +28,30 @@ try {
     $catQuery = $conn->query("SELECT * FROM category");
     $categories = $catQuery->fetch_all(MYSQLI_ASSOC);
     
-    // Get non-expired products with category names
-    $productQuery = $conn->query("
-        SELECT p.*, c.category 
-        FROM products p 
-        JOIN category c ON p.fid_category = c.id
-        WHERE p.exp IS NULL OR p.exp >= CURDATE()
-    ");
-    $products = $productQuery->fetch_all(MYSQLI_ASSOC);
+    // Handle search
+    $searchTerm = isset($_GET['search']) ? trim($_GET['search']) : '';
+    if ($searchTerm !== '') {
+        $productQuery = $conn->prepare("
+            SELECT p.*, c.category 
+            FROM products p 
+            JOIN category c ON p.fid_category = c.id
+            WHERE (p.exp IS NULL OR p.exp >= CURDATE())
+            AND (p.product_name LIKE ? OR p.barcode LIKE ?)
+        ");
+        $searchParam = "%{$searchTerm}%";
+        $productQuery->bind_param('ss', $searchParam, $searchParam);
+        $productQuery->execute();
+        $products = $productQuery->get_result()->fetch_all(MYSQLI_ASSOC);
+    } else {
+        // Get all non-expired products with category names and barcodes
+        $productQuery = $conn->query("
+            SELECT p.*, c.category 
+            FROM products p 
+            JOIN category c ON p.fid_category = c.id
+            WHERE p.exp IS NULL OR p.exp >= CURDATE()
+        ");
+        $products = $productQuery->fetch_all(MYSQLI_ASSOC);
+    }
 } catch (Exception $e) {
     error_log("Database error: " . $e->getMessage());
     $_SESSION['error_message'] = "Terjadi kesalahan saat mengambil data produk";
@@ -119,7 +108,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_to_cart'])) {
                 'price' => $product['selling_price'],
                 'quantity' => $quantity,
                 'image' => $product['image'],
-                'stock' => $product['qty'] // Simpan stok awal untuk validasi
+                'stock' => $product['qty'] // Save initial stock for validation
             ];
         }
         
@@ -184,130 +173,82 @@ if (!empty($_SESSION['cart'])) {
 }
 ?>
 <!DOCTYPE html>
-<html lang="id">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Transaksi Baru - MediPOS</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <style>
-        .sidebar {
-            transition: all 0.3s;
+        body {
+            background-color: #1E1B2E;
+            font-family: 'Inter', sans-serif;
         }
-        .active-menu {
-            background-color: #7C3AED;
+        .sidebar {
+            background: linear-gradient(180deg, #2A2540 0%, #1E1B2E 100%);
+            border-right: 1px solid #3B3360;
+        }
+        .nav-item {
+            transition: all 0.2s ease;
+            border-radius: 0.5rem;
+        }
+        .nav-item:hover {
+            background-color: rgba(155, 135, 245, 0.1);
+        }
+        .nav-item.active {
+            background-color: #9B87F5;
             color: white;
         }
-        .active-menu:hover {
-            background-color: #6B21A8;
+        .nav-item.active:hover {
+            background-color: #8A75E5;
+        }
+        .stat-card {
+            background: linear-gradient(135deg, #2A2540 0%, #3B3360 100%);
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            transition: transform 0.3s ease;
+        }
+        .stat-card:hover {
+            transform: translateY(-2px);
+        }
+        .table-row:hover {
+            background-color: rgba(155, 135, 245, 0.05);
         }
         .category-card {
             padding: 10px 16px;
             border-radius: 8px;
-            background-color: white;
+            background-color: #2A2540;
             cursor: pointer;
             transition: all 0.3s;
             margin-right: 8px;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
-            border: 1px solid #e5e7eb;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            border: 1px solid #3B3360;
             font-size: 14px;
             white-space: nowrap;
+            color: #9CA3AF;
         }
         .category-card:hover {
-            background-color: #7C3AED;
+            background-color: #9B87F5;
             color: white;
             transform: translateY(-2px);
-            border-color: #7C3AED;
+            border-color: #9B87F5;
         }
         .category-card.active {
-            background-color: #7C3AED;
+            background-color: #9B87F5;
             color: white;
-            border-color: #7C3AED;
-        }
-        .cart-sidebar {
-            position: fixed;
-            top: 0;
-            right: -400px;
-            width: 400px;
-            height: 100%;
-            background-color: white;
-            box-shadow: -2px 0 10px rgba(0,0,0,0.1);
-            transition: right 0.3s ease;
-            z-index: 1000;
-            padding: 20px;
-            overflow-y: auto;
-            display: flex;
-            flex-direction: column;
-        }
-        .cart-sidebar.open {
-            right: 0;
-        }
-        .cart-item {
-            display: flex;
-            padding: 12px;
-            border-radius: 8px;
-            background-color: white;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
-            border: 1px solid #e5e7eb;
-            margin-bottom: 8px;
-        }
-        .cart-total {
-            font-weight: bold;
-            font-size: 1.2em;
-            margin: 16px 0;
-            text-align: right;
-        }
-        .cart-toggle {
-            position: fixed;
-            right: 20px;
-            top: 80px;
-            background-color: #7C3AED;
-            color: white;
-            border: none;
-            border-radius: 50%;
-            width: 56px;
-            height: 56px;
-            font-size: 1.2em;
-            cursor: pointer;
-            box-shadow: 0 4px 8px rgba(0,0,0,0.15);
-            z-index: 999;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            transition: all 0.3s;
-        }
-        .cart-toggle:hover {
-            transform: scale(1.1);
-            background-color: #6B21A8;
-        }
-        .cart-badge {
-            position: absolute;
-            top: -5px;
-            right: -5px;
-            background-color: #EF4444;
-            color: white;
-            border-radius: 50%;
-            width: 22px;
-            height: 22px;
-            font-size: 12px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-weight: bold;
+            border-color: #9B87F5;
         }
         .product-card {
             transition: all 0.3s ease;
             border-radius: 12px;
             overflow: hidden;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
-            border: 1px solid #e5e7eb;
-            background-color: white;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            border: 1px solid #3B3360;
+            background-color: #2A2540;
         }
         .product-card:hover {
             transform: translateY(-5px);
-            box-shadow: 0 10px 15px rgba(124, 58, 237, 0.1);
-            border-color: #8b5cf6;
+            box-shadow: 0 10px 15px rgba(155, 135, 245, 0.2);
+            border-color: #9B87F5;
         }
         .product-image {
             height: 180px;
@@ -322,7 +263,7 @@ if (!empty($_SESSION['cart'])) {
             position: absolute;
             top: 12px;
             right: 12px;
-            background-color: #7C3AED;
+            background-color: #9B87F5;
             color: white;
             padding: 4px 10px;
             border-radius: 20px;
@@ -339,7 +280,7 @@ if (!empty($_SESSION['cart'])) {
         .quantity-control {
             display: flex;
             align-items: center;
-            border: 1px solid #e5e7eb;
+            border: 1px solid #3B3360;
             border-radius: 8px;
             overflow: hidden;
         }
@@ -349,21 +290,97 @@ if (!empty($_SESSION['cart'])) {
             display: flex;
             align-items: center;
             justify-content: center;
-            background-color: #f3f4f6;
+            background-color: #3B3360;
             border: none;
             cursor: pointer;
             transition: background-color 0.2s;
+            color: white;
         }
         .quantity-btn:hover {
-            background-color: #e5e7eb;
+            background-color: #4C3F8B;
         }
         .quantity-input {
             width: 40px;
             text-align: center;
             border: none;
-            border-left: 1px solid #e5e7eb;
-            border-right: 1px solid #e5e7eb;
+            border-left: 1px solid #3B3360;
+            border-right: 1px solid #3B3360;
             font-weight: 600;
+            background-color: #2A2540;
+            color: white;
+        }
+        .cart-sidebar {
+            position: fixed;
+            top: 0;
+            right: -400px;
+            width: 400px;
+            height: 100%;
+            background-color: #2A2540;
+            box-shadow: -2px 0 10px rgba(0,0,0,0.3);
+            transition: right 0.3s ease;
+            z-index: 1000;
+            padding: 20px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            border-left: 1px solid #3B3360;
+        }
+        .cart-sidebar.open {
+            right: 0;
+        }
+        .cart-item {
+            display: flex;
+            padding: 12px;
+            border-radius: 8px;
+            background-color: #3B3360;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            border: 1px solid #4C3F8B;
+            margin-bottom: 8px;
+        }
+        .cart-total {
+            font-weight: bold;
+            font-size: 1.2em;
+            margin: 16px 0;
+            text-align: right;
+            color: white;
+        }
+        .cart-toggle {
+            position: fixed;
+            right: 20px;
+            top: 80px;
+            background-color: #9B87F5;
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 56px;
+            height: 56px;
+            font-size: 1.2em;
+            cursor: pointer;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+            z-index: 999;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s;
+        }
+        .cart-toggle:hover {
+            transform: scale(1.1);
+            background-color: #8A75E5;
+        }
+        .cart-badge {
+            position: absolute;
+            top: -5px;
+            right: -5px;
+            background-color: #EF4444;
+            color: white;
+            border-radius: 50%;
+            width: 22px;
+            height: 22px;
+            font-size: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
         }
         .cart-timer {
             background-color: #fef3c7;
@@ -385,10 +402,10 @@ if (!empty($_SESSION['cart'])) {
             top: 20px;
             right: 20px;
             padding: 15px 20px;
-            background-color: #7C3AED;
+            background-color: #9B87F5;
             color: white;
             border-radius: 8px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
             z-index: 1000;
             display: flex;
             align-items: center;
@@ -408,7 +425,7 @@ if (!empty($_SESSION['cart'])) {
             align-items: center;
             justify-content: center;
             padding: 40px 0;
-            color: #9ca3af;
+            color: #9CA3AF;
         }
         .empty-cart i {
             font-size: 48px;
@@ -416,84 +433,126 @@ if (!empty($_SESSION['cart'])) {
         }
         .checkout-btn {
             transition: all 0.3s;
+            background-color: #9B87F5;
+            color: white;
         }
         .checkout-btn:hover {
             transform: translateY(-2px);
-            box-shadow: 0 4px 8px rgba(124, 58, 237, 0.2);
+            box-shadow: 0 4px 8px rgba(155, 135, 245, 0.3);
+            background-color: #8A75E5;
+        }
+        .scan-highlight {
+            animation: highlight 1.5s ease;
+        }
+        @keyframes highlight {
+            0% { box-shadow: 0 0 0 0 rgba(155, 135, 245, 0.7); }
+            70% { box-shadow: 0 0 0 10px rgba(155, 135, 245, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(155, 135, 245, 0); }
+        }
+        .scanner-modal {
+            background-color: #2A2540;
+            border: 1px solid #3B3360;
+        }
+        .product-modal {
+            background-color: #2A2540;
+            border: 1px solid #3B3360;
         }
     </style>
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
 </head>
-<body class="bg-gray-50 font-sans">
+<body class="text-gray-200">
     <div class="flex h-screen overflow-hidden">
-        <!-- Sidebar Navigation -->
-        <div class="sidebar w-64 bg-white shadow-lg">
-            <div class="p-4 border-b">
-                <h1 class="text-xl font-bold text-purple-800">Medi<span class="text-purple-600">POS</span></h1>
-                <p class="text-sm text-gray-500">Kasir Dashboard</p>
+        <!-- Sidebar -->
+        <aside class="sidebar w-64 flex flex-col p-5 space-y-8">
+            <!-- Logo -->
+            <div class="flex items-center space-x-3">
+                <div class="w-9 h-9 rounded-lg bg-purple-500 flex items-center justify-center">
+                    <span class="material-icons text-white">local_pharmacy</span>
+                </div>
+                <h1 class="text-xl font-bold text-purple-300">MediPOS</h1>
             </div>
-            <div class="p-4">
-                <div class="flex items-center space-x-3 mb-6">
-                    <div class="w-10 h-10 rounded-full bg-purple-200 flex items-center justify-center">
-                        <i class="fas fa-user text-purple-800"></i>
+            
+            <!-- Navigation -->
+            <nav class="flex-1 flex flex-col space-y-2">
+                <a href="dashboard.php" class="nav-item flex items-center p-3 space-x-3">
+                    <span class="material-icons">dashboard</span>
+                    <span>Dashboard</span>
+                </a>
+                <a href="transaksi.php" class="nav-item active flex items-center p-3 space-x-3">
+                    <span class="material-icons">point_of_sale</span>
+                    <span>Transaksi</span>
+                </a>
+                <a href="manage_member.php" class="nav-item flex items-center p-3 space-x-3">
+                    <span class="material-icons">people</span>
+                    <span>Member</span>
+                </a>
+                <a href="reports.php" class="nav-item flex items-center p-3 space-x-3">
+                    <span class="material-icons">insert_chart</span>
+                    <span>Laporan</span>
+                </a>
+            </nav>
+            
+            <!-- User & Logout -->
+            <div class="mt-auto">
+                <div class="flex items-center p-3 space-x-3 rounded-lg bg-[#3B3360]">
+                    <div class="w-10 h-10 rounded-full bg-purple-500 flex items-center justify-center">
+                        <span class="material-icons">person</span>
                     </div>
+                    <div class="flex-1">
+                        <p class="font-medium"><?php echo $_SESSION['username']; ?></p>
+                        <p class="text-xs text-purple-300">Kasir</p>
+                    </div>
+                    <a href="../service/logout.php" class="text-red-400 hover:text-red-300 transition">
+                        <span class="material-icons">logout</span>
+                    </a>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="flex-1 p-8 overflow-y-auto">
+            <div class="max-w-7xl mx-auto">
+                <!-- Header -->
+                <div class="flex justify-between items-center mb-8">
                     <div>
-                        <p class="font-medium"><?= htmlspecialchars($_SESSION['username']) ?></p>
-                        <p class="text-xs text-gray-500">Kasir</p>
+                        <h2 class="text-2xl font-bold text-white">Transaksi Baru</h2>
+                        <p class="text-purple-300">Buat transaksi penjualan baru</p>
+                    </div>
+                    <div class="flex items-center space-x-4">
+                        <div class="relative">
+                            <form method="GET" action="transaksi.php" class="flex items-center">
+                                <span class="material-icons absolute left-3 top-1/2 transform -translate-y-1/2 text-purple-300">search</span>
+                                <input type="text" name="search" placeholder="Cari produk..." 
+                                       value="<?= htmlspecialchars($searchTerm) ?>"
+                                       class="bg-[#2A2540] pl-10 pr-4 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 w-64">
+                                <?php if ($searchTerm !== ''): ?>
+                                    <a href="transaksi.php" class="ml-2 text-purple-300 hover:text-white">
+                                        <span class="material-icons">close</span>
+                                    </a>
+                                <?php endif; ?>
+                            </form>
+                        </div>
+                        <button id="scanButton" class="bg-purple-500 hover:bg-purple-600 text-white px-4 py-2 rounded-lg flex items-center space-x-2 transition">
+                            <span class="material-icons">qr_code_scanner</span>
+                            <span>Scan Produk</span>
+                        </button>
                     </div>
                 </div>
                 
-                <nav>
-                    <a href="dashboard.php" class="block py-2 px-3 mb-1 rounded hover:bg-purple-100 transition-colors">
-                        <i class="fas fa-tachometer-alt mr-2"></i> Dashboard
-                    </a>
-                    <a href="transaksi.php" class="block py-2 px-3 mb-1 rounded active-menu">
-                        <i class="fas fa-cash-register mr-2"></i> Transaksi Baru
-                    </a>
-                    <a href="daftar_transaksi.php" class="block py-2 px-3 mb-1 rounded hover:bg-purple-100 transition-colors">
-                        <i class="fas fa-list mr-2"></i> Daftar Transaksi
-                    </a>
-                    <a href="produk.php" class="block py-2 px-3 mb-1 rounded hover:bg-purple-100 transition-colors">
-                        <i class="fas fa-boxes mr-2"></i> Kelola Produk
-                    </a>
-                    <hr class="my-3 border-gray-200">
-                    <a href="../service/logout.php" class="block py-2 px-3 mb-1 rounded hover:bg-red-100 text-red-600 transition-colors">
-                        <i class="fas fa-sign-out-alt mr-2"></i> Logout
-                    </a>
-                </nav>
-            </div>
-        </div>
-
-        <!-- Main Content -->
-        <div class="flex-1 overflow-auto">
-            <!-- Header -->
-            <header class="bg-white shadow-sm p-4 flex justify-between items-center">
-                <h2 class="text-xl font-semibold text-gray-800">
-                    <i class="fas fa-cash-register mr-2 text-purple-600"></i> Transaksi Baru
-                </h2>
-                <div class="flex items-center space-x-4">
-                    <button id="scanButton" class="flex items-center gap-2 py-2 px-4 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors">
-                        <i class="fas fa-barcode text-xl"></i> Scan Produk
-                    </button>
-                    <span class="text-sm text-gray-500">
-                        <i class="far fa-calendar-alt mr-1"></i> <?= date('d F Y') ?>
-                    </span>
-                </div>
-            </header>
-
-            <!-- Transaction Content -->
-            <main class="p-6">
                 <!-- Success/Error Message -->
                 <?php if (isset($_SESSION['success_message'])): ?>
                     <div class="alert-box">
-                        <i class="fas fa-check-circle mr-2"></i>
+                        <span class="material-icons mr-2">check_circle</span>
                         <span><?= $_SESSION['success_message'] ?></span>
                     </div>
                     <?php unset($_SESSION['success_message']); ?>
                 <?php endif; ?>
                 
                 <?php if (isset($_SESSION['error_message'])): ?>
-                    <div class="alert-box bg-red-100 border-l-4 border-red-500 text-red-700 p-4 mb-4 rounded">
-                        <i class="fas fa-exclamation-circle mr-2"></i>
+                    <div class="alert-box bg-red-500">
+                        <span class="material-icons mr-2">error</span>
                         <span><?= $_SESSION['error_message'] ?></span>
                     </div>
                     <?php unset($_SESSION['error_message']); ?>
@@ -502,7 +561,7 @@ if (!empty($_SESSION['cart'])) {
                 <!-- Kategori -->
                 <div class="category-container flex overflow-x-auto space-x-2 p-1 my-4 pb-2">
                     <div class="category-card active" onclick="filterByCategory('all')">
-                        <i class="fas fa-boxes mr-2"></i> Semua Produk
+                        <span class="material-icons mr-2">all_inbox</span> Semua Produk
                     </div>
                     <?php foreach ($categories as $category): ?>
                         <div class="category-card" onclick="filterByCategory('<?= htmlspecialchars($category['category']) ?>')">
@@ -520,16 +579,17 @@ if (!empty($_SESSION['cart'])) {
                              data-category="<?= htmlspecialchars($product['category']) ?>"
                              data-stock="<?= $product['qty'] ?>"
                              data-price="<?= $product['selling_price'] ?>"
-                             data-image="<?= $product['image'] ?>">
+                             data-image="<?= $product['image'] ?>"
+                             data-barcode="<?= $product['barcode'] ?? '' ?>">
                             
                             <?php if ($product['qty'] <= 5 && $product['qty'] > 0): ?>
                                 <span class="product-badge low-stock">
-                                    <i class="fas fa-exclamation-circle mr-1"></i>
+                                    <span class="material-icons mr-1 text-xs">warning</span>
                                     Stok <?= $product['qty'] ?>
                                 </span>
                             <?php elseif ($product['qty'] == 0): ?>
                                 <span class="product-badge out-of-stock">
-                                    <i class="fas fa-times-circle mr-1"></i>
+                                    <span class="material-icons mr-1 text-xs">block</span>
                                     Stok Habis
                                 </span>
                             <?php endif; ?>
@@ -540,13 +600,13 @@ if (!empty($_SESSION['cart'])) {
                                  onclick="openModal(<?= $product['id'] ?>)">
                             
                             <div class="p-4">
-                                <h3 class="font-semibold text-lg text-gray-800 mb-1 truncate" title="<?= htmlspecialchars($product['product_name']) ?>">
+                                <h3 class="font-semibold text-lg text-white mb-1 truncate" title="<?= htmlspecialchars($product['product_name']) ?>">
                                     <?= htmlspecialchars($product['product_name']) ?>
                                 </h3>
-                                <p class="text-sm text-gray-500 mb-2"><?= htmlspecialchars($product['category']) ?></p>
+                                <p class="text-sm text-purple-300 mb-2"><?= htmlspecialchars($product['category']) ?></p>
                                 
                                 <div class="flex justify-between items-center mb-3">
-                                    <p class="font-bold text-purple-600 text-lg"><?= format_currency($product['selling_price']) ?></p>
+                                    <p class="font-bold text-purple-400 text-lg"><?= format_currency($product['selling_price']) ?></p>
                                     <?php if ($product['exp']): ?>
                                         <p class="text-xs text-gray-400">
                                             Exp: <?= date('d/m/Y', strtotime($product['exp'])) ?>
@@ -557,11 +617,11 @@ if (!empty($_SESSION['cart'])) {
                                 <div class="flex justify-between items-center gap-2">
                                     <div class="quantity-control">
                                         <button class="quantity-btn" onclick="updateQuantity(<?= $product['id'] ?>, -1)">
-                                            <i class="fas fa-minus text-gray-600"></i>
+                                            <span class="material-icons text-sm">remove</span>
                                         </button>
                                         <span id="quantity-<?= $product['id'] ?>" class="quantity-input">0</span>
                                         <button class="quantity-btn" onclick="updateQuantity(<?= $product['id'] ?>, 1)">
-                                            <i class="fas fa-plus text-gray-600"></i>
+                                            <span class="material-icons text-sm">add</span>
                                         </button>
                                     </div>
                                     
@@ -569,9 +629,9 @@ if (!empty($_SESSION['cart'])) {
                                         <input type="hidden" name="product_id" value="<?= $product['id'] ?>">
                                         <input type="hidden" name="quantity" id="qty-<?= $product['id'] ?>" value="0">
                                         <input type="hidden" name="add_to_cart" value="1">
-                                        <button type="submit" class="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors <?= $product['qty'] == 0 ? 'opacity-50 cursor-not-allowed' : '' ?>" 
+                                        <button type="submit" class="px-4 py-2 bg-purple-500 text-white rounded-lg hover:bg-purple-600 transition-colors <?= $product['qty'] == 0 ? 'opacity-50 cursor-not-allowed' : '' ?>" 
                                                 <?= $product['qty'] == 0 ? 'disabled' : '' ?>>
-                                            <i class="fas fa-cart-plus"></i>
+                                            <span class="material-icons">add_shopping_cart</span>
                                         </button>
                                     </form>
                                 </div>
@@ -579,131 +639,131 @@ if (!empty($_SESSION['cart'])) {
                         </div>
                     <?php endforeach; ?>
                 </div>
-            </main>
-        </div>
-
-        <!-- Cart Sidebar -->
-        <button class="cart-toggle" onclick="toggleCart()">
-            <i class="fas fa-shopping-cart"></i>
-            <span class="cart-badge" id="cartBadge"><?= count($_SESSION['cart']) ?></span>
-        </button>
-
-        <div id="cartSidebar" class="cart-sidebar">
-            <div class="flex justify-between items-center mb-4 sticky top-0 bg-white pb-4 border-b z-10">
-                <h2 class="text-xl font-bold text-purple-800">
-                    <i class="fas fa-shopping-cart mr-2"></i> Keranjang
-                </h2>
-                <div class="flex items-center gap-2">
-                    <span class="cart-timer" id="cartTimer">
-                        <i class="fas fa-clock"></i>
-                        <span id="timeRemaining">05:00</span>
-                    </span>
-                    <button onclick="toggleCart()" class="text-gray-500 hover:text-gray-700 p-1">
-                        <i class="fas fa-times text-lg"></i>
-                    </button>
-                </div>
             </div>
-            
-            <div id="cartItems" class="flex-1 overflow-y-auto">
-                <?php if (empty($_SESSION['cart'])): ?>
-                    <div class="empty-cart">
-                        <i class="fas fa-shopping-cart"></i>
-                        <p class="text-lg">Keranjang belanja kosong</p>
-                        <p class="text-sm mt-2">Tambahkan produk untuk memulai transaksi</p>
-                    </div>
-                <?php else: ?>
-                    <?php 
-                    $total = 0;
-                    foreach ($_SESSION['cart'] as $index => $item): 
-                        $itemTotal = $item['price'] * $item['quantity'];
-                        $total += $itemTotal;
-                    ?>
-                        <div class="cart-item">
-                            <div class="flex items-start gap-3 w-full">
-                                <img src="../uploads/<?= htmlspecialchars($item['image']) ?>" 
-                                     alt="<?= htmlspecialchars($item['name']) ?>" 
-                                     class="w-16 h-16 object-cover rounded-md flex-shrink-0">
+        </main>
+    </div>
+
+    <!-- Cart Sidebar -->
+    <button class="cart-toggle" onclick="toggleCart()">
+        <span class="material-icons">shopping_cart</span>
+        <span class="cart-badge" id="cartBadge"><?= count($_SESSION['cart']) ?></span>
+    </button>
+
+    <div id="cartSidebar" class="cart-sidebar">
+        <div class="flex justify-between items-center mb-4 sticky top-0 bg-[#3B3360] pb-4 border-b border-[#4C3F8B] z-10">
+            <h2 class="text-xl font-bold text-white">
+                <span class="material-icons mr-2">shopping_cart</span> Keranjang
+            </h2>
+            <div class="flex items-center gap-2">
+                <span class="cart-timer" id="cartTimer">
+                    <span class="material-icons mr-1 text-sm">timer</span>
+                    <span id="timeRemaining">05:00</span>
+                </span>
+                <button onclick="toggleCart()" class="text-gray-400 hover:text-white p-1">
+                    <span class="material-icons">close</span>
+                </button>
+            </div>
+        </div>
+        
+        <div id="cartItems" class="flex-1 overflow-y-auto">
+            <?php if (empty($_SESSION['cart'])): ?>
+                <div class="empty-cart">
+                    <span class="material-icons text-5xl">shopping_cart</span>
+                    <p class="text-lg">Keranjang belanja kosong</p>
+                    <p class="text-sm mt-2">Tambahkan produk untuk memulai transaksi</p>
+                </div>
+            <?php else: ?>
+                <?php 
+                $total = 0;
+                foreach ($_SESSION['cart'] as $index => $item): 
+                    $itemTotal = $item['price'] * $item['quantity'];
+                    $total += $itemTotal;
+                ?>
+                    <div class="cart-item">
+                        <div class="flex items-start gap-3 w-full">
+                            <img src="../uploads/<?= htmlspecialchars($item['image']) ?>" 
+                                 alt="<?= htmlspecialchars($item['name']) ?>" 
+                                 class="w-16 h-16 object-cover rounded-md flex-shrink-0">
+                            
+                            <div class="flex-1 min-w-0">
+                                <div class="flex justify-between items-start">
+                                    <h4 class="font-medium text-white truncate" title="<?= htmlspecialchars($item['name']) ?>">
+                                        <?= htmlspecialchars($item['name']) ?>
+                                    </h4>
+                                    <span class="font-semibold text-purple-300 whitespace-nowrap ml-2">
+                                        <?= format_currency($itemTotal) ?>
+                                    </span>
+                                </div>
                                 
-                                <div class="flex-1 min-w-0">
-                                    <div class="flex justify-between items-start">
-                                        <h4 class="font-medium truncate" title="<?= htmlspecialchars($item['name']) ?>">
-                                            <?= htmlspecialchars($item['name']) ?>
-                                        </h4>
-                                        <span class="font-semibold whitespace-nowrap ml-2">
-                                            <?= format_currency($itemTotal) ?>
-                                        </span>
-                                    </div>
-                                    
-                                    <div class="flex items-center justify-between mt-3">
-                                        <div class="quantity-control">
-                                            <a href="?update_quantity=1&index=<?= $index ?>&quantity=<?= $item['quantity']-1 ?>" 
-                                               class="quantity-btn">
-                                                <i class="fas fa-minus text-gray-600"></i>
-                                            </a>
-                                            <span class="quantity-input"><?= $item['quantity'] ?></span>
-                                            <a href="?update_quantity=1&index=<?= $index ?>&quantity=<?= $item['quantity']+1 ?>" 
-                                               class="quantity-btn">
-                                                <i class="fas fa-plus text-gray-600"></i>
-                                            </a>
-                                        </div>
-                                        
-                                        <a href="?remove_from_cart=<?= $index ?>" 
-                                           class="text-red-500 hover:text-red-700 p-2 ml-2">
-                                            <i class="fas fa-trash-alt"></i>
+                                <div class="flex items-center justify-between mt-3">
+                                    <div class="quantity-control">
+                                        <a href="?update_quantity=1&index=<?= $index ?>&quantity=<?= $item['quantity']-1 ?>" 
+                                           class="quantity-btn">
+                                            <span class="material-icons text-sm">remove</span>
+                                        </a>
+                                        <span class="quantity-input"><?= $item['quantity'] ?></span>
+                                        <a href="?update_quantity=1&index=<?= $index ?>&quantity=<?= $item['quantity']+1 ?>" 
+                                           class="quantity-btn">
+                                            <span class="material-icons text-sm">add</span>
                                         </a>
                                     </div>
-                                    <p class="text-sm text-gray-500 mt-1">
-                                        <?= format_currency($item['price']) ?> per item
-                                    </p>
-                                    <p class="text-xs text-gray-400 mt-1">
-                                        Stok tersedia saat ditambahkan: <?= $item['stock'] ?>
-                                    </p>
+                                    
+                                    <a href="?remove_from_cart=<?= $index ?>" 
+                                       class="text-red-400 hover:text-red-300 p-2 ml-2">
+                                        <span class="material-icons">delete</span>
+                                    </a>
                                 </div>
+                                <p class="text-sm text-purple-300 mt-1">
+                                    <?= format_currency($item['price']) ?> per item
+                                </p>
+                                <p class="text-xs text-gray-400 mt-1">
+                                    Stok tersedia saat ditambahkan: <?= $item['stock'] ?>
+                                </p>
                             </div>
                         </div>
-                    <?php endforeach; ?>
-                <?php endif; ?>
-            </div>
-            
-            <?php if (!empty($_SESSION['cart'])): ?>
-                <div class="sticky bottom-0 bg-white pt-4 border-t">
-                    <div class="cart-total flex justify-between items-center">
-                        <span class="font-semibold">Total:</span>
-                        <span id="cartTotal" class="text-xl font-bold text-purple-600"><?= format_currency($total) ?></span>
                     </div>
-                    <form action="checkout.php" method="POST" class="w-full" onsubmit="return validateCartBeforeCheckout()">
-                        <button type="submit" class="block w-full py-3 bg-purple-600 text-white text-center rounded-lg hover:bg-purple-700 mt-4 mb-2 checkout-btn">
-                            <i class="fas fa-credit-card mr-2"></i> Proses Pembayaran
-                        </button>
-                    </form>
-                </div>
+                <?php endforeach; ?>
             <?php endif; ?>
         </div>
+        
+        <?php if (!empty($_SESSION['cart'])): ?>
+            <div class="sticky bottom-0 bg-[#3B3360] pt-4 border-t border-[#4C3F8B]">
+                <div class="cart-total flex justify-between items-center">
+                    <span class="font-semibold">Total:</span>
+                    <span id="cartTotal" class="text-xl font-bold text-purple-300"><?= format_currency($total) ?></span>
+                </div>
+                <form action="checkout.php" method="POST" class="w-full" onsubmit="return validateCartBeforeCheckout()">
+                    <button type="submit" class="block w-full py-3 bg-purple-500 text-white text-center rounded-lg hover:bg-purple-600 mt-4 mb-2 checkout-btn">
+                        <span class="material-icons mr-2">payment</span> Proses Pembayaran
+                    </button>
+                </form>
+            </div>
+        <?php endif; ?>
+    </div>
 
-        <!-- Scanner Modal -->
-        <div id="scannerModal" class="fixed top-0 left-0 w-full h-full bg-black bg-opacity-50 z-50 flex items-center justify-center hidden">
-            <div class="bg-white p-6 rounded-lg max-w-md w-full relative">
-                <button class="close absolute top-2 right-2 text-2xl text-purple-600" onclick="closeScannerModal()">&times;</button>
-                <h2 class="text-xl font-semibold mb-4 text-center text-gray-800">Scan Barcode Produk</h2>
-                
-                <div class="mb-4">
-                    <label class="block text-gray-700 mb-2">Gunakan scanner USB atau masukkan barcode manual:</label>
-                    <input type="text" id="barcodeInput" class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-600" placeholder="Scan barcode..." autofocus>
-                </div>
-                
-                <div id="scannerFeedback" class="text-center py-4 text-gray-600">
-                    Arahkan scanner ke barcode produk
-                </div>
+    <!-- Scanner Modal -->
+    <div id="scannerModal" class="fixed top-0 left-0 w-full h-full bg-black bg-opacity-50 z-50 flex items-center justify-center hidden">
+        <div class="scanner-modal p-6 rounded-lg max-w-md w-full relative">
+            <button class="close absolute top-2 right-2 text-2xl text-purple-300" onclick="closeScannerModal()">&times;</button>
+            <h2 class="text-xl font-semibold mb-4 text-center text-white">Scan Barcode Produk</h2>
+            
+            <div class="mb-4">
+                <label class="block text-purple-300 mb-2">Gunakan scanner USB atau masukkan barcode manual:</label>
+                <input type="text" id="barcodeInput" class="w-full px-3 py-2 bg-[#3B3360] border border-[#4C3F8B] rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 text-white" placeholder="Scan barcode..." autofocus>
+            </div>
+            
+            <div id="scannerFeedback" class="text-center py-4 text-purple-300">
+                <span class="material-icons mr-2">qr_code_scanner</span> Arahkan scanner ke barcode produk
             </div>
         </div>
+    </div>
 
-        <!-- Product Detail Modal -->
-        <div id="productModal" class="fixed top-0 left-0 w-full h-full bg-black bg-opacity-50 z-50 flex items-center justify-center hidden">
-            <div class="bg-white p-6 rounded-lg max-w-xl w-full relative">
-                <button class="close absolute top-2 right-2 text-2xl text-purple-600 font-bold" onclick="closeModal()">&times;</button>
-                <div id="modalProductDetails" class="text-center space-y-4">
-                    <!-- Content will be filled by JavaScript -->
-                </div>
+    <!-- Product Detail Modal -->
+    <div id="productModal" class="fixed top-0 left-0 w-full h-full bg-black bg-opacity-50 z-50 flex items-center justify-center hidden">
+        <div class="product-modal p-6 rounded-lg max-w-xl w-full relative">
+            <button class="close absolute top-2 right-2 text-2xl text-purple-300 font-bold" onclick="closeModal()">&times;</button>
+            <div id="modalProductDetails" class="text-center space-y-4">
+                <!-- Content will be filled by JavaScript -->
             </div>
         </div>
     </div>
@@ -750,9 +810,13 @@ if (!empty($_SESSION['cart'])) {
             document.querySelectorAll('.category-card').forEach(card => card.classList.remove('active'));
             event.target.classList.add('active');
             
+            const searchTerm = document.querySelector('input[name="search"]').value.toLowerCase();
+            
             document.querySelectorAll('.product-card').forEach(product => {
                 const productCategory = product.getAttribute('data-category');
-                const showProduct = (category === 'all' || productCategory === category);
+                const productName = product.getAttribute('data-name').toLowerCase();
+                const showProduct = (category === 'all' || productCategory === category) && 
+                                   (searchTerm === '' || productName.includes(searchTerm));
                 product.style.display = showProduct ? 'block' : 'none';
             });
         }
@@ -793,9 +857,9 @@ if (!empty($_SESSION['cart'])) {
         
         function showAlert(message, type = 'error') {
             const alertBox = document.createElement('div');
-            alertBox.className = `alert-box ${type === 'success' ? 'bg-green-100 border-l-4 border-green-500 text-green-700' : 'bg-red-100 border-l-4 border-red-500 text-red-700'}`;
+            alertBox.className = `alert-box ${type === 'success' ? 'bg-green-500' : 'bg-red-500'}`;
             alertBox.innerHTML = `
-                <i class="fas ${type === 'error' ? 'fa-exclamation-circle' : 'fa-check-circle'} mr-2"></i>
+                <span class="material-icons mr-2">${type === 'error' ? 'error' : 'check_circle'}</span>
                 <span>${message}</span>
             `;
             document.body.appendChild(alertBox);
@@ -816,29 +880,31 @@ if (!empty($_SESSION['cart'])) {
             const stock = product.getAttribute('data-stock');
             const price = product.getAttribute('data-price');
             const image = product.getAttribute('data-image');
+            const barcode = product.getAttribute('data-barcode');
             
             modalDetails.innerHTML = `
                 <img src="../uploads/${image}" alt="${name}" class="w-full h-48 object-cover rounded-lg mb-4">
-                <h2 class="text-2xl font-bold text-gray-800">${name}</h2>
-                <p class="text-purple-600 font-medium">Kategori: ${category}</p>
-                <p class="text-gray-700">Stok: ${stock}</p>
-                <p class="text-xl text-purple-600 font-bold my-3">${formatCurrency(price)}</p>
+                <h2 class="text-2xl font-bold text-white">${name}</h2>
+                <p class="text-purple-300 font-medium">Kategori: ${category}</p>
+                <p class="text-gray-300">Stok: ${stock}</p>
+                ${barcode ? `<p class="text-gray-300">Barcode: ${barcode}</p>` : ''}
+                <p class="text-xl text-purple-300 font-bold my-3">${formatCurrency(price)}</p>
                 <div class="flex justify-center gap-4 mt-4">
                     <div class="quantity-control">
                         <button class="quantity-btn" onclick="updateQuantity(${productId}, -1)">
-                            <i class="fas fa-minus text-gray-600"></i>
+                            <span class="material-icons text-sm">remove</span>
                         </button>
                         <span id="modal-quantity-${productId}" class="quantity-input">0</span>
                         <button class="quantity-btn" onclick="updateQuantity(${productId}, 1)">
-                            <i class="fas fa-plus text-gray-600"></i>
+                            <span class="material-icons text-sm">add</span>
                         </button>
                     </div>
                     <form method="POST" onsubmit="return prepareQuantity(${productId})">
                         <input type="hidden" name="product_id" value="${productId}">
                         <input type="hidden" name="quantity" id="modal-qty-${productId}" value="0">
                         <input type="hidden" name="add_to_cart" value="1">
-                        <button type="submit" class="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700">
-                            <i class="fas fa-cart-plus mr-2"></i> Tambahkan
+                        <button type="submit" class="px-4 py-2 bg-purple-500 text-white rounded-lg hover:bg-purple-600">
+                            <span class="material-icons mr-2">add_shopping_cart</span> Tambahkan
                         </button>
                     </form>
                 </div>
@@ -860,64 +926,100 @@ if (!empty($_SESSION['cart'])) {
         function openScanner() {
             document.getElementById('scannerModal').classList.remove('hidden');
             document.getElementById('barcodeInput').focus();
+            document.getElementById('scannerFeedback').innerHTML = 
+                '<span class="material-icons mr-2">qr_code_scanner</span> Arahkan scanner ke barcode produk';
         }
-        
+
         function closeScannerModal() {
             document.getElementById('scannerModal').classList.add('hidden');
         }
-        
-        // Handle barcode input
+
+        // Handle barcode input with debounce for USB scanner
+        let barcodeTimer;
         document.getElementById('barcodeInput').addEventListener('input', function(e) {
-            // Simulate USB scanner behavior (quick input)
-            setTimeout(() => {
-                if (this.value.length > 3) { // Assume barcode has at least 4 characters
-                    processBarcode(this.value);
+            clearTimeout(barcodeTimer);
+            barcodeTimer = setTimeout(() => {
+                if (this.value.length >= 3) { // Minimum 3 characters for barcode
+                    processBarcode(this.value.trim());
                     this.value = '';
                 }
-            }, 100);
+            }, 100); // 100ms debounce
         });
-        
+
         function processBarcode(barcode) {
-            // Find product by barcode
-            fetch(`./service/check_barcode.php?barcode=${encodeURIComponent(barcode)}`)
-                .then(response => response.json())
+            showFeedback('Processing barcode...', 'loading');
+            
+            // Gunakan URL absolut yang benar
+            const apiUrl = '../service/check_barcode.php?barcode=' + encodeURIComponent(barcode);
+            
+            fetch(apiUrl)
+                .then(response => {
+                    // Pastikan response adalah JSON
+                    const contentType = response.headers.get('content-type');
+                    if (!contentType || !contentType.includes('application/json')) {
+                        return response.text().then(text => {
+                            throw new Error(`Invalid response: ${text.substring(0, 100)}`);
+                        });
+                    }
+                    return response.json();
+                })
                 .then(data => {
                     if (data.success) {
-                        const product = document.querySelector(`.product-card[data-id="${data.product_id}"]`);
+                        // Proses data produk
+                        const productId = data.data.id;
+                        const productElement = document.querySelector(`[data-id="${productId}"]`);
                         
-                        if (product) {
-                            // Highlight product
-                            product.classList.add('scan-highlight');
+                        if (productElement) {
+                            // Update UI
+                            document.getElementById(`quantity-${productId}`).textContent = 1;
+                            document.getElementById(`qty-${productId}`).value = 1;
+                            
+                            // Submit form
                             setTimeout(() => {
-                                product.classList.remove('scan-highlight');
-                            }, 2000);
+                                productElement.querySelector('form').submit();
+                            }, 300);
                             
-                            // Set quantity to 1
-                            document.getElementById(`quantity-${data.product_id}`).textContent = '1';
-                            document.getElementById(`qty-${data.product_id}`).value = '1';
-                            
-                            // Submit the form
-                            const form = product.querySelector('form');
-                            if (form && prepareQuantity(data.product_id)) {
-                                form.submit();
-                            }
+                            showFeedback(`Found: ${data.data.name}`, 'success');
+                        } else {
+                            showFeedback('Product not in current view', 'warning');
                         }
                     } else {
-                        document.getElementById('scannerFeedback').innerHTML = `
-                            <div class="text-red-500">
-                                <i class="fas fa-times-circle"></i> Produk tidak ditemukan
-                            </div>
-                        `;
+                        showFeedback(data.message, 'error');
                     }
                 })
                 .catch(error => {
-                    console.error('Error:', error);
-                    document.getElementById('scannerFeedback').innerHTML = `
-                        <div class="text-red-500">
-                            <i class="fas fa-times-circle"></i> Error memproses barcode
-                        </div>
-                    `;
+                    console.error('Barcode error:', error);
+                    showFeedback(`Error: ${error.message}`, 'error');
                 });
+        }
+
+        function showFeedback(message, type = 'info') {
+            const feedback = document.getElementById('scannerFeedback');
+            let icon = '';
+            
+            switch(type) {
+                case 'success':
+                    icon = '<span class="material-icons mr-2">check_circle</span>';
+                    feedback.className = 'text-center py-4 text-green-400';
+                    break;
+                case 'error':
+                    icon = '<span class="material-icons mr-2">error</span>';
+                    feedback.className = 'text-center py-4 text-red-400';
+                    break;
+                case 'warning':
+                    icon = '<span class="material-icons mr-2">warning</span>';
+                    feedback.className = 'text-center py-4 text-yellow-400';
+                    break;
+                case 'loading':
+                    icon = '<span class="material-icons mr-2 animate-spin">autorenew</span>';
+                    feedback.className = 'text-center py-4 text-purple-400';
+                    break;
+                default:
+                    icon = '<span class="material-icons mr-2">info</span>';
+                    feedback.className = 'text-center py-4 text-purple-300';
+            }
+            
+            feedback.innerHTML = icon + message;
         }
         
         function formatCurrency(amount) {

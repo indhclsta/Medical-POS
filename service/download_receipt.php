@@ -52,7 +52,7 @@ $html = '
 <html>
 <head>
     <meta charset="UTF-8">
-    <title>Nota Transaksi - SmartCash</title>
+    <title>Nota Transaksi - MediPOS</title>
     <style>
         body { 
             font-family: Arial, sans-serif;
@@ -94,7 +94,7 @@ $html = '
 <body>
     <div class="receipt">
         <div class="text-center mb-4">
-            <h1 class="text-2xl font-bold">Smart <span class="text-[#779341]">Cash</span></h1>
+            <h1 class="text-2xl font-bold">Medi<span class="text-[#779341]">POS</span></h1>
             <p class="text-sm text-gray-600">Jl. Swadaya 4 Kp. Pulo Jahe No. 71, Jakarta Timur</p>
             <p class="text-sm text-gray-600">Telp: (081) 2844-21151</p>
             <p class="text-sm text-gray-600">' . date('d/m/Y H:i:s') . '</p>
@@ -194,9 +194,9 @@ $html .= '
 
         <!-- Footer -->
         <div class="text-center text-xs text-gray-500 mt-6">
-            <p>Terima kasih telah berbelanja di Smart Cash</p>
+            <p>Terima kasih telah berbelanja di Medical POS</p>
             <p>Barang yang sudah dibeli tidak dapat ditukar/dikembalikan</p>
-            <p class="mt-2">www.smartcash.com</p>
+            <p class="mt-2">www.medipos.com</p>
         </div>
 
     </div>

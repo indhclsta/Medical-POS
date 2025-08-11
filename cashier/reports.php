@@ -5,7 +5,7 @@ if (!isset($_SESSION['email'])) {
     exit();
 }
 
-// Check for super admin role
+// Check for cashier role
 if ($_SESSION['role'] !== 'cashier') {
     header("location:../unauthorized.php");
     exit();
@@ -21,7 +21,6 @@ $admin = mysqli_fetch_assoc($query);
 
 // Set variables
 $username = $admin['username'];
-$image = !empty($admin['image']) ? '../uploads/' . $admin['image'] : 'default.jpg';
 
 // Capture filter parameters
 $start_date = isset($_GET['start_date']) ? $_GET['start_date'] : '';
@@ -114,235 +113,211 @@ while ($row = mysqli_fetch_assoc($chart_result)) {
 
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Laporan - MediPOS</title>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <title>MediPOS - Laporan</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background-color: #f8fafc;
+            background-color: #1E1B2E;
+            font-family: 'Inter', sans-serif;
         }
-
         .sidebar {
-            background-color: #6b46c1;
+            background: linear-gradient(180deg, #2A2540 0%, #1E1B2E 100%);
+            border-right: 1px solid #3B3360;
+        }
+        .nav-item {
+            transition: all 0.2s ease;
+            border-radius: 0.5rem;
+        }
+        .nav-item:hover {
+            background-color: rgba(155, 135, 245, 0.1);
+        }
+        .nav-item.active {
+            background-color: #9B87F5;
             color: white;
         }
-
-        .sidebar a:hover {
-            background-color: #805ad5;
+        .nav-item.active:hover {
+            background-color: #8A75E5;
         }
-
         .stat-card {
-            border-left: 4px solid #6b46c1;
+            background: linear-gradient(135deg, #2A2540 0%, #3B3360 100%);
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            transition: transform 0.3s ease;
         }
-
-        .bg-super-admin {
-            background-color: #6b46c1;
+        .stat-card:hover {
+            transform: translateY(-2px);
         }
-
-        .text-super-admin {
-            color: #6b46c1;
+        .table-row:hover {
+            background-color: rgba(155, 135, 245, 0.05);
         }
-
-        .nav-active {
-            background-color: #805ad5;
-        }
-
-        #detailModal {
-            transition: opacity 0.3s ease;
-        }
-
         .chart-container {
             position: relative;
             height: 300px;
             width: 100%;
         }
-
         /* Print Styles */
         @media print {
             body * {
                 visibility: hidden;
             }
-
             .print-content,
             .print-content * {
                 visibility: visible;
             }
-
             .print-content {
                 position: absolute;
                 left: 0;
                 top: 0;
                 width: 100%;
                 padding: 20px;
+                background-color: white;
+                color: black;
             }
-
             .no-print {
                 display: none !important;
             }
-
             table {
                 width: 100%;
                 border-collapse: collapse;
                 margin-bottom: 20px;
             }
-
-            th,
-            td {
+            th, td {
                 border: 1px solid #ddd;
                 padding: 8px;
                 text-align: left;
             }
-
             th {
                 background-color: #f2f2f2 !important;
                 -webkit-print-color-adjust: exact;
             }
-
             .print-header {
                 text-align: center;
                 margin-bottom: 20px;
             }
-
             .print-title {
                 font-size: 1.5rem;
                 font-weight: bold;
                 margin-bottom: 10px;
             }
-
             .print-summary {
                 display: grid;
                 grid-template-columns: repeat(3, 1fr);
                 gap: 15px;
                 margin-bottom: 20px;
             }
-
             .print-summary-item {
                 border-left: 4px solid #6b46c1;
                 padding: 10px;
             }
-
             .print-charts {
                 display: grid;
                 grid-template-columns: 1fr 1fr;
                 gap: 15px;
                 margin-bottom: 20px;
             }
-
             .print-chart {
                 height: 300px;
             }
         }
     </style>
 </head>
-
-<body class="bg-gray-50">
-    <div class="flex h-screen">
+<body class="text-gray-200">
+    <div class="flex h-screen overflow-hidden">
         <!-- Sidebar -->
-        <div class="sidebar w-64 px-4 py-8 shadow-lg fixed h-full no-print">
-            <div class="flex items-center justify-center mb-8">
-                <h1 class="text-2xl font-bold">
-                    <span class="text-white">Medi</span><span class="text-purple-300">POS</span>
-                </h1>
-            </div>
-
-            <div class="flex items-center px-4 py-3 mb-6 rounded-lg bg-purple-900">
-                <div class="w-10 h-10 rounded-full bg-purple-700 flex items-center justify-center">
-                    <i class="fas fa-user-shield text-white"></i>
+        <aside class="sidebar w-64 flex flex-col p-5 space-y-8 no-print">
+            <!-- Logo -->
+            <div class="flex items-center space-x-3">
+                <div class="w-9 h-9 rounded-lg bg-purple-500 flex items-center justify-center">
+                    <span class="material-icons text-white">local_pharmacy</span>
                 </div>
-                <div class="ml-3">
-                    <p class="font-medium text-white"><?= htmlspecialchars($username) ?></p>
-                    <p class="text-xs text-purple-200">Cashier</p>
-                </div>
+                <h1 class="text-xl font-bold text-purple-300">MediPOS</h1>
             </div>
-
-            <nav class="mt-8">
-                <a href="dashboard.php" class="flex items-center px-4 py-3 rounded-lg">
-                    <i class="fas fa-tachometer-alt mr-3"></i>
-                    Dashboard
+            
+            <!-- Navigation -->
+            <nav class="flex-1 flex flex-col space-y-2">
+                <a href="dashboard.php" class="nav-item flex items-center p-3 space-x-3">
+                    <span class="material-icons">dashboard</span>
+                    <span>Dashboard</span>
                 </a>
-                <a href="manage_admin.php" class="flex items-center px-4 py-3 rounded-lg hover:bg-purple-800">
-                    <i class="fas fa-user-cog mr-3"></i>
-                    Kelola Kasir
+                <a href="transaksi.php" class="nav-item flex items-center p-3 space-x-3">
+                    <span class="material-icons">point_of_sale</span>
+                    <span>Transaksi</span>
                 </a>
-                <a href="manage_member.php" class="flex items-center px-4 py-3 rounded-lg hover:bg-purple-800">
-                    <i class="fas fa-users mr-3"></i>
-                    Kelola Member
+                <a href="manage_member.php" class="nav-item flex items-center p-3 space-x-3">
+                    <span class="material-icons">people</span>
+                    <span>Member</span>
                 </a>
-                <a href="manage_category.php" class="flex items-center px-4 py-3 rounded-lg hover:bg-purple-800">
-                    <i class="fas fa-tags mr-3"></i>
-                    Kategori Produk
-                </a>
-                <a href="manage_product.php" class="flex items-center px-4 py-3 rounded-lg hover:bg-purple-800">
-                    <i class="fas fa-boxes mr-3"></i>
-                    Kelola Produk
-                </a>
-                <a href="reports.php" class="flex items-center px-4 py-3 rounded-lg nav-active">
-                    <i class="fas fa-chart-bar mr-3"></i>
-                    Laporan & Grafik
-                </a>
-                <a href="system_logs.php" class="flex items-center px-4 py-3 rounded-lg hover:bg-purple-800">
-                    <i class="fas fa-clipboard-list mr-3"></i>
-                    Log Sistem
-                </a>
-                <a href="../service/logout.php" class="flex items-center px-4 py-0 rounded-lg hover:bg-purple-800 mt-5 text-red-200">
-                    <i class="fas fa-sign-out-alt mr-3"></i>
-                    Logout
+                <a href="reports.php" class="nav-item active flex items-center p-3 space-x-3">
+                    <span class="material-icons">insert_chart</span>
+                    <span>Laporan</span>
                 </a>
             </nav>
-        </div>
+            
+            <!-- User & Logout -->
+            <div class="mt-auto">
+                <div class="flex items-center p-3 space-x-3 rounded-lg bg-[#3B3360]">
+                    <div class="w-10 h-10 rounded-full bg-purple-500 flex items-center justify-center">
+                        <span class="material-icons">person</span>
+                    </div>
+                    <div class="flex-1">
+                        <p class="font-medium"><?php echo htmlspecialchars($username); ?></p>
+                        <p class="text-xs text-purple-300">Kasir</p>
+                    </div>
+                    <a href="../service/logout.php" class="text-red-400 hover:text-red-300 transition">
+                        <span class="material-icons">logout</span>
+                    </a>
+                </div>
+            </div>
+        </aside>
 
         <!-- Main Content -->
-        <div class="ml-64 flex-1 overflow-y-auto">
-            <header class="bg-white shadow-sm no-print">
-                <div class="flex justify-between items-center px-6 py-4">
-                    <h2 class="text-xl font-semibold text-gray-800">Laporan & Grafik</h2>
+        <main class="flex-1 p-8 overflow-y-auto">
+            <div class="max-w-7xl mx-auto">
+                <!-- Header -->
+                <div class="flex justify-between items-center mb-8 no-print">
+                    <div>
+                        <h2 class="text-2xl font-bold text-white">Laporan & Grafik</h2>
+                        <p class="text-purple-300">Analisis penjualan dan transaksi</p>
+                    </div>
                     <div class="flex items-center space-x-4">
-                        <span class="text-sm text-gray-500" id="currentDateTime"></span>
                         <div class="relative">
-                            <img src="<?= htmlspecialchars($image) ?>"
-                                alt="Profile"
-                                class="w-8 h-8 rounded-full border-2 border-purple-500">
-                            <span class="absolute bottom-0 right-0 w-3 h-3 bg-green-500 rounded-full"></span>
+                            <span class="material-icons absolute left-3 top-1/2 transform -translate-y-1/2 text-purple-300">search</span>
+                            <input type="text" placeholder="Cari..." class="bg-[#2A2540] pl-10 pr-4 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500">
                         </div>
                     </div>
                 </div>
-            </header>
-
-            <main class="p-6">
+                
                 <!-- Filter Form -->
-                <div class="bg-white rounded-xl shadow-md p-6 mb-6 border-l-4 border-purple-600 no-print">
-                    <h2 class="text-xl font-bold mb-4 text-gray-800">Filter Laporan</h2>
+                <div class="bg-[#2A2540] rounded-xl shadow-lg p-6 mb-8 no-print">
+                    <h2 class="text-lg font-semibold text-white mb-4">Filter Laporan</h2>
                     <form method="GET" class="space-y-4">
                         <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                             <div>
-                                <label class="block text-gray-700 text-sm font-bold mb-2" for="report-type">
+                                <label class="block text-sm font-medium text-purple-300 mb-2" for="report-type">
                                     Jenis Laporan
                                 </label>
-                                <select name="report_type" id="report-type" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline">
+                                <select name="report_type" id="report-type" class="bg-[#1E1B2E] border border-[#3B3360] rounded-lg w-full py-2 px-3 text-white focus:outline-none focus:ring-2 focus:ring-purple-500">
                                     <option value="keseluruhan" <?= $report_type == 'keseluruhan' ? 'selected' : '' ?>>Laporan Keseluruhan</option>
                                     <option value="periode" <?= $report_type == 'periode' ? 'selected' : '' ?>>Laporan Berdasarkan Periode</option>
                                 </select>
                             </div>
 
                             <div id="dateRangeFields" class="<?= $report_type != 'periode' ? 'hidden' : '' ?>">
-                                <label class="block text-gray-700 text-sm font-bold mb-2">Rentang Tanggal</label>
+                                <label class="block text-sm font-medium text-purple-300 mb-2">Rentang Tanggal</label>
                                 <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
-                                    <input type="date" name="start_date" value="<?= $start_date ?>" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline">
-                                    <input type="date" name="end_date" value="<?= $end_date ?>" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline">
+                                    <input type="date" name="start_date" value="<?= $start_date ?>" class="bg-[#1E1B2E] border border-[#3B3360] rounded-lg w-full py-2 px-3 text-white focus:outline-none focus:ring-2 focus:ring-purple-500">
+                                    <input type="date" name="end_date" value="<?= $end_date ?>" class="bg-[#1E1B2E] border border-[#3B3360] rounded-lg w-full py-2 px-3 text-white focus:outline-none focus:ring-2 focus:ring-purple-500">
                                 </div>
                             </div>
 
                             <div>
-                                <label class="block text-gray-700 text-sm font-bold mb-2" for="chart-type">
+                                <label class="block text-sm font-medium text-purple-300 mb-2" for="chart-type">
                                     Tipe Grafik
                                 </label>
-                                <select name="chart_type" id="chart-type" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline">
+                                <select name="chart_type" id="chart-type" class="bg-[#1E1B2E] border border-[#3B3360] rounded-lg w-full py-2 px-3 text-white focus:outline-none focus:ring-2 focus:ring-purple-500">
                                     <option value="daily" <?= $chart_type == 'daily' ? 'selected' : '' ?>>Harian</option>
                                     <option value="weekly" <?= $chart_type == 'weekly' ? 'selected' : '' ?>>Mingguan</option>
                                     <option value="monthly" <?= $chart_type == 'monthly' ? 'selected' : '' ?>>Bulanan</option>
@@ -352,11 +327,11 @@ while ($row = mysqli_fetch_assoc($chart_result)) {
 
                         <div class="flex justify-end space-x-3">
                             <?php if ($report_type == 'periode' && !empty($start_date)): ?>
-                                <a href="reports.php" class="bg-gray-500 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline">
+                                <a href="reports.php" class="bg-[#3B3360] hover:bg-[#4A406B] text-white font-bold py-2 px-4 rounded-lg transition">
                                     Reset
                                 </a>
                             <?php endif; ?>
-                            <button type="submit" class="bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-6 rounded focus:outline-none focus:shadow-outline">
+                            <button type="submit" class="bg-purple-500 hover:bg-purple-600 text-white font-bold py-2 px-6 rounded-lg transition">
                                 Terapkan Filter
                             </button>
                         </div>
@@ -409,7 +384,7 @@ while ($row = mysqli_fetch_assoc($chart_result)) {
                             <tr>
                                 <th>ID</th>
                                 <th>Tanggal</th>
-                                <th>Admin</th>
+                                <th>Kasir</th>
                                 <th>Member</th>
                                 <th>Total</th>
                                 <th>Metode</th>
@@ -431,110 +406,127 @@ while ($row = mysqli_fetch_assoc($chart_result)) {
                     </table>
                 </div>
 
-                <!-- Summary Cards -->
+                <!-- Statistik -->
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-                    <div class="stat-card bg-white rounded-lg p-6 shadow">
+                    <div class="stat-card p-6 rounded-xl">
                         <div class="flex items-center justify-between">
                             <div>
-                                <h3 class="text-gray-500 text-sm">Total Transaksi</h3>
-                                <p class="text-2xl font-bold text-purple-600"><?= $total_transactions ?></p>
+                                <h3 class="text-sm font-medium text-purple-300 mb-1">Total Transaksi</h3>
+                                <p class="text-2xl font-bold text-white"><?= $total_transactions ?></p>
                             </div>
-                            <div class="bg-purple-100 p-3 rounded-full">
-                                <i class="fas fa-receipt text-purple-600"></i>
+                            <div class="w-12 h-12 rounded-full bg-blue-500 bg-opacity-20 flex items-center justify-center">
+                                <span class="material-icons text-blue-400">receipt</span>
                             </div>
                         </div>
+                        <p class="text-xs text-green-400 mt-2"><?= $report_type == 'periode' && !empty($start_date) ? 'Periode terpilih' : 'Keseluruhan' ?></p>
                     </div>
-
-                    <div class="stat-card bg-white rounded-lg p-6 shadow">
+                    
+                    <div class="stat-card p-6 rounded-xl">
                         <div class="flex items-center justify-between">
                             <div>
-                                <h3 class="text-gray-500 text-sm">Total Pendapatan</h3>
-                                <p class="text-2xl font-bold text-purple-600">Rp <?= number_format($total_income, 0, ',', '.') ?></p>
+                                <h3 class="text-sm font-medium text-purple-300 mb-1">Total Pendapatan</h3>
+                                <p class="text-2xl font-bold text-white">Rp <?= number_format($total_income, 0, ',', '.') ?></p>
                             </div>
-                            <div class="bg-purple-100 p-3 rounded-full">
-                                <i class="fas fa-money-bill-wave text-purple-600"></i>
+                            <div class="w-12 h-12 rounded-full bg-purple-500 bg-opacity-20 flex items-center justify-center">
+                                <span class="material-icons text-purple-400">attach_money</span>
                             </div>
                         </div>
+                        <p class="text-xs text-green-400 mt-2"><?= $report_type == 'periode' && !empty($start_date) ? 'Periode terpilih' : 'Keseluruhan' ?></p>
                     </div>
-
-                    <div class="stat-card bg-white rounded-lg p-6 shadow">
+                    
+                    <div class="stat-card p-6 rounded-xl">
                         <div class="flex items-center justify-between">
                             <div>
-                                <h3 class="text-gray-500 text-sm">Total Margin</h3>
-                                <p class="text-2xl font-bold text-purple-600">Rp <?= number_format($total_margin, 0, ',', '.') ?></p>
+                                <h3 class="text-sm font-medium text-purple-300 mb-1">Total Margin</h3>
+                                <p class="text-2xl font-bold text-white">Rp <?= number_format($total_margin, 0, ',', '.') ?></p>
                             </div>
-                            <div class="bg-purple-100 p-3 rounded-full">
-                                <i class="fas fa-chart-line text-purple-600"></i>
+                            <div class="w-12 h-12 rounded-full bg-green-500 bg-opacity-20 flex items-center justify-center">
+                                <span class="material-icons text-green-400">trending_up</span>
                             </div>
                         </div>
+                        <a href="#" class="text-xs text-purple-400 hover:text-purple-300 mt-2 inline-block transition">Detail margin</a>
                     </div>
                 </div>
 
                 <!-- Charts Section -->
-                <div class="bg-white rounded-lg shadow overflow-hidden mb-8">
-                    <div class="px-6 py-4 border-b border-gray-200 bg-purple-50">
-                        <h3 class="font-semibold text-lg text-purple-800">Visualisasi Data</h3>
+                <div class="bg-[#2A2540] p-6 rounded-xl shadow-lg mb-8">
+                    <div class="flex justify-between items-center mb-6">
+                        <h3 class="text-lg font-semibold text-white">Visualisasi Data</h3>
+                        <div class="flex space-x-2 no-print">
+                            <button onclick="preparePrint()" class="bg-purple-500 hover:bg-purple-600 text-white px-3 py-1 rounded-lg text-sm flex items-center space-x-1 transition">
+                                <span class="material-icons text-sm">print</span>
+                                <span>Cetak</span>
+                            </button>
+                            <button onclick="downloadPDF()" class="bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded-lg text-sm flex items-center space-x-1 transition">
+                                <span class="material-icons text-sm">picture_as_pdf</span>
+                                <span>PDF</span>
+                            </button>
+                        </div>
                     </div>
-                    <div class="p-6">
-                        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                            <!-- Sales Chart -->
-                            <div>
-                                <h4 class="font-medium text-gray-700 mb-3">Grafik Penjualan</h4>
-                                <div class="chart-container">
-                                    <canvas id="salesChart"></canvas>
-                                </div>
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        <!-- Sales Chart -->
+                        <div>
+                            <h4 class="font-medium text-purple-300 mb-3">Grafik Penjualan</h4>
+                            <div class="chart-container">
+                                <canvas id="salesChart"></canvas>
                             </div>
+                        </div>
 
-                            <!-- Margin Chart -->
-                            <div>
-                                <h4 class="font-medium text-gray-700 mb-3">Grafik Margin</h4>
-                                <div class="chart-container">
-                                    <canvas id="marginChart"></canvas>
-                                </div>
+                        <!-- Margin Chart -->
+                        <div>
+                            <h4 class="font-medium text-purple-300 mb-3">Grafik Margin</h4>
+                            <div class="chart-container">
+                                <canvas id="marginChart"></canvas>
                             </div>
                         </div>
                     </div>
                 </div>
 
                 <!-- Transaction Table -->
-                <div class="bg-white rounded-lg shadow overflow-hidden">
-                    <div class="px-6 py-4 border-b border-gray-200 bg-purple-50 flex justify-between items-center no-print">
-                        <h3 class="font-semibold text-lg text-purple-800">Daftar Transaksi</h3>
-                        <div class="flex space-x-3">
-                            <button onclick="preparePrint()" class="bg-purple-600 hover:bg-purple-700 text-white font-medium py-1 px-3 rounded text-sm flex items-center">
-                                <i class="fas fa-print mr-2"></i> Cetak Laporan
+                <div class="bg-[#2A2540] rounded-xl shadow-lg overflow-hidden">
+                    <div class="px-6 py-4 border-b border-[#3B3360] flex justify-between items-center no-print">
+                        <h3 class="font-semibold text-lg text-white">Daftar Transaksi</h3>
+                        <div class="flex space-x-2">
+                            <button onclick="preparePrint()" class="bg-purple-500 hover:bg-purple-600 text-white px-3 py-1 rounded-lg text-sm flex items-center space-x-1 transition">
+                                <span class="material-icons text-sm">print</span>
+                                <span>Cetak</span>
                             </button>
-                            <button onclick="downloadPDF()" class="bg-red-600 hover:bg-red-700 text-white font-medium py-1 px-3 rounded text-sm flex items-center">
-                                <i class="fas fa-file-pdf mr-2"></i> Export PDF
+                            <button onclick="downloadPDF()" class="bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded-lg text-sm flex items-center space-x-1 transition">
+                                <span class="material-icons text-sm">picture_as_pdf</span>
+                                <span>PDF</span>
                             </button>
                         </div>
                     </div>
                     <div class="overflow-x-auto">
-                        <table class="min-w-full divide-y divide-gray-200">
-                            <thead class="bg-gray-50">
+                        <table class="min-w-full divide-y divide-[#3B3360]">
+                            <thead class="bg-[#2A2540]">
                                 <tr>
-                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ID</th>
-                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tanggal</th>
-                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Admin</th>
-                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Member</th>
-                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total</th>
-                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Metode</th>
-                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider no-print">Aksi</th>
+                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-purple-300 uppercase tracking-wider">ID</th>
+                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-purple-300 uppercase tracking-wider">Tanggal</th>
+                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-purple-300 uppercase tracking-wider">Kasir</th>
+                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-purple-300 uppercase tracking-wider">Member</th>
+                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-purple-300 uppercase tracking-wider">Total</th>
+                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-purple-300 uppercase tracking-wider">Metode</th>
+                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-purple-300 uppercase tracking-wider no-print">Aksi</th>
                                 </tr>
                             </thead>
-                            <tbody class="bg-white divide-y divide-gray-200">
+                            <tbody class="bg-[#2A2540] divide-y divide-[#3B3360]">
                                 <?php mysqli_data_seek($transactions, 0); ?>
                                 <?php while ($transaction = mysqli_fetch_assoc($transactions)): ?>
-                                    <tr class="hover:bg-gray-50">
-                                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900"><?= $transaction['id'] ?></td>
-                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500"><?= date('d M Y H:i', strtotime($transaction['date'])) ?></td>
-                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500"><?= $transaction['admin_name'] ?></td>
-                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500"><?= $transaction['member_name'] ?? '-' ?></td>
-                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">Rp <?= number_format($transaction['total_price'], 0, ',', '.') ?></td>
-                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500"><?= ucfirst($transaction['payment_method']) ?></td>
-                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 no-print">
-                                            <button onclick="showDetail(<?= $transaction['id'] ?>)" class="text-purple-600 hover:text-purple-900">
-                                                <i class="fas fa-eye mr-1"></i> Detail
+                                    <tr class="hover:bg-[#3B3360] transition">
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-white">#TRX-<?= $transaction['id'] ?></td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-200"><?= date('d M Y, H:i', strtotime($transaction['date'])) ?></td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-200"><?= $transaction['admin_name'] ?></td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-200"><?= $transaction['member_name'] ?? '-' ?></td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-white">Rp <?= number_format($transaction['total_price'], 0, ',', '.') ?></td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm">
+                                            <span class="px-2 py-1 <?= $transaction['payment_method'] == 'tunai' ? 'bg-green-900 bg-opacity-30 text-green-400' : 'bg-blue-900 bg-opacity-30 text-blue-400'; ?> rounded-full text-xs">
+                                                <?= ucfirst($transaction['payment_method']) ?>
+                                            </span>
+                                        </td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-200 no-print">
+                                            <button onclick="showDetail(<?= $transaction['id'] ?>)" class="text-purple-400 hover:text-purple-300 transition">
+                                                <span class="material-icons">visibility</span>
                                             </button>
                                         </td>
                                     </tr>
@@ -543,60 +535,50 @@ while ($row = mysqli_fetch_assoc($chart_result)) {
                         </table>
                     </div>
                 </div>
-            </main>
-        </div>
+            </div>
+        </main>
     </div>
 
     <!-- Modal for Transaction Details -->
     <div id="detailModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden z-50 no-print">
-        <div class="bg-white rounded-lg shadow-lg w-full max-w-2xl p-6 relative">
-            <button onclick="closeModal()" class="absolute top-2 right-2 text-gray-500 hover:text-gray-700 text-xl">&times;</button>
-            <h3 class="text-xl font-bold mb-4">Detail Transaksi</h3>
+        <div class="bg-[#2A2540] rounded-xl shadow-lg w-full max-w-2xl p-6 relative border border-[#3B3360]">
+            <button onclick="closeModal()" class="absolute top-4 right-4 text-gray-400 hover:text-white text-xl transition">&times;</button>
+            <h3 class="text-xl font-bold mb-4 text-white">Detail Transaksi</h3>
             <div class="mb-4 grid grid-cols-2 gap-4">
-                <div><strong>ID:</strong> <span id="modalTransactionId"></span></div>
-                <div><strong>Tanggal:</strong> <span id="modalDate"></span></div>
-                <div><strong>Admin:</strong> <span id="modalAdmin"></span></div>
-                <div><strong>Member:</strong> <span id="modalMember"></span></div>
-                <div><strong>Total:</strong> <span id="modalTotal"></span></div>
-                <div><strong>Margin:</strong> <span id="modalMargin"></span></div>
-                <div><strong>Metode:</strong> <span id="modalMethod"></span></div>
-                <div><strong>Dibayar:</strong> <span id="modalPaid"></span></div>
-                <div><strong>Kembalian:</strong> <span id="modalChange"></span></div>
+                <div class="text-gray-300"><strong class="text-purple-300">ID:</strong> <span id="modalTransactionId"></span></div>
+                <div class="text-gray-300"><strong class="text-purple-300">Tanggal:</strong> <span id="modalDate"></span></div>
+                <div class="text-gray-300"><strong class="text-purple-300">Kasir:</strong> <span id="modalAdmin"></span></div>
+                <div class="text-gray-300"><strong class="text-purple-300">Member:</strong> <span id="modalMember"></span></div>
+                <div class="text-gray-300"><strong class="text-purple-300">Total:</strong> <span id="modalTotal"></span></div>
+                <div class="text-gray-300"><strong class="text-purple-300">Margin:</strong> <span id="modalMargin"></span></div>
+                <div class="text-gray-300"><strong class="text-purple-300">Metode:</strong> <span id="modalMethod"></span></div>
+                <div class="text-gray-300"><strong class="text-purple-300">Dibayar:</strong> <span id="modalPaid"></span></div>
+                <div class="text-gray-300"><strong class="text-purple-300">Kembalian:</strong> <span id="modalChange"></span></div>
             </div>
-            <h4 class="font-semibold mb-2">Produk</h4>
-            <table class="w-full border">
-                <thead>
-                    <tr>
-                        <th class="px-4 py-2">Nama Produk</th>
-                        <th class="px-4 py-2">Harga</th>
-                        <th class="px-4 py-2">Qty</th>
-                        <th class="px-4 py-2">Margin</th>
-                        <th class="px-4 py-2">Subtotal</th>
-                    </tr>
-                </thead>
-                <tbody id="modalProducts"></tbody>
-            </table>
+            <h4 class="font-semibold mb-2 text-purple-300">Produk</h4>
+            <div class="overflow-x-auto">
+                <table class="w-full border border-[#3B3360]">
+                    <thead>
+                        <tr class="bg-[#3B3360]">
+                            <th class="px-4 py-2 text-left text-purple-300">Nama Produk</th>
+                            <th class="px-4 py-2 text-left text-purple-300">Harga</th>
+                            <th class="px-4 py-2 text-left text-purple-300">Qty</th>
+                            <th class="px-4 py-2 text-left text-purple-300">Margin</th>
+                            <th class="px-4 py-2 text-left text-purple-300">Subtotal</th>
+                        </tr>
+                    </thead>
+                    <tbody id="modalProducts" class="divide-y divide-[#3B3360]"></tbody>
+                </table>
+            </div>
         </div>
     </div>
 
+    <!-- Google Icons -->
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
     <script>
-        // Update date and time
-        function updateDateTime() {
-            const now = new Date();
-            const options = {
-                weekday: 'long',
-                year: 'numeric',
-                month: 'long',
-                day: 'numeric',
-                hour: '2-digit',
-                minute: '2-digit'
-            };
-            document.getElementById('currentDateTime').textContent = now.toLocaleDateString('id-ID', options);
-        }
-
-        setInterval(updateDateTime, 1000);
-        updateDateTime();
-
         // Show/hide date range based on report type
         document.getElementById('report-type').addEventListener('change', function() {
             const dateRangeFields = document.getElementById('dateRangeFields');
@@ -616,8 +598,8 @@ while ($row = mysqli_fetch_assoc($chart_result)) {
                 datasets: [{
                     label: 'Total Penjualan',
                     data: <?= json_encode($chart_data) ?>,
-                    backgroundColor: 'rgba(107, 70, 193, 0.7)',
-                    borderColor: 'rgba(107, 70, 193, 1)',
+                    backgroundColor: 'rgba(155, 135, 245, 0.7)',
+                    borderColor: 'rgba(155, 135, 245, 1)',
                     borderWidth: 1
                 }]
             },
@@ -630,11 +612,28 @@ while ($row = mysqli_fetch_assoc($chart_result)) {
                         ticks: {
                             callback: function(value) {
                                 return 'Rp ' + value.toLocaleString('id-ID');
-                            }
+                            },
+                            color: '#9CA3AF'
+                        },
+                        grid: {
+                            color: 'rgba(156, 163, 175, 0.1)'
+                        }
+                    },
+                    x: {
+                        ticks: {
+                            color: '#9CA3AF'
+                        },
+                        grid: {
+                            color: 'rgba(156, 163, 175, 0.1)'
                         }
                     }
                 },
                 plugins: {
+                    legend: {
+                        labels: {
+                            color: '#E5E7EB'
+                        }
+                    },
                     tooltip: {
                         callbacks: {
                             label: function(context) {
@@ -670,11 +669,28 @@ while ($row = mysqli_fetch_assoc($chart_result)) {
                         ticks: {
                             callback: function(value) {
                                 return 'Rp ' + value.toLocaleString('id-ID');
-                            }
+                            },
+                            color: '#9CA3AF'
+                        },
+                        grid: {
+                            color: 'rgba(156, 163, 175, 0.1)'
+                        }
+                    },
+                    x: {
+                        ticks: {
+                            color: '#9CA3AF'
+                        },
+                        grid: {
+                            color: 'rgba(156, 163, 175, 0.1)'
                         }
                     }
                 },
                 plugins: {
+                    legend: {
+                        labels: {
+                            color: '#E5E7EB'
+                        }
+                    },
                     tooltip: {
                         callbacks: {
                             label: function(context) {
@@ -714,46 +730,6 @@ while ($row = mysqli_fetch_assoc($chart_result)) {
                         backgroundColor: 'rgba(107, 70, 193, 0.7)',
                         borderColor: 'rgba(107, 70, 193, 1)',
                         borderWidth: 1
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    scales: {
-                        y: {
-                            beginAtZero: true,
-                            ticks: {
-                                callback: function(value) {
-                                    return 'Rp ' + value.toLocaleString('id-ID');
-                                }
-                            }
-                        }
-                    },
-                    plugins: {
-                        legend: {
-                            display: false
-                        },
-                        tooltip: {
-                            enabled: false
-                        }
-                    }
-                }
-            });
-
-            // Margin Chart for Print
-            const printMarginCtx = document.getElementById('printMarginChart').getContext('2d');
-            new Chart(printMarginCtx, {
-                type: 'line',
-                data: {
-                    labels: <?= json_encode($chart_labels) ?>,
-                    datasets: [{
-                        label: 'Total Margin',
-                        data: <?= json_encode($chart_margin_data) ?>,
-                        backgroundColor: 'rgba(75, 192, 192, 0.2)',
-                        borderColor: 'rgba(75, 192, 192, 1)',
-                        borderWidth: 2,
-                        tension: 0.1,
-                        fill: true
                     }]
                 },
                 options: {
