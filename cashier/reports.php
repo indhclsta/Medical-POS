@@ -113,6 +113,7 @@ while ($row = mysqli_fetch_assoc($chart_result)) {
 
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -124,49 +125,61 @@ while ($row = mysqli_fetch_assoc($chart_result)) {
             background-color: #1E1B2E;
             font-family: 'Inter', sans-serif;
         }
+
         .sidebar {
             background: linear-gradient(180deg, #2A2540 0%, #1E1B2E 100%);
             border-right: 1px solid #3B3360;
         }
+
         .nav-item {
             transition: all 0.2s ease;
             border-radius: 0.5rem;
         }
+
         .nav-item:hover {
             background-color: rgba(155, 135, 245, 0.1);
         }
+
         .nav-item.active {
             background-color: #9B87F5;
             color: white;
         }
+
         .nav-item.active:hover {
             background-color: #8A75E5;
         }
+
         .stat-card {
             background: linear-gradient(135deg, #2A2540 0%, #3B3360 100%);
             box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
             transition: transform 0.3s ease;
         }
+
         .stat-card:hover {
             transform: translateY(-2px);
         }
+
         .table-row:hover {
             background-color: rgba(155, 135, 245, 0.05);
         }
+
         .chart-container {
             position: relative;
             height: 300px;
             width: 100%;
         }
+
         /* Print Styles */
         @media print {
             body * {
                 visibility: hidden;
             }
+
             .print-content,
             .print-content * {
                 visibility: visible;
             }
+
             .print-content {
                 position: absolute;
                 left: 0;
@@ -176,54 +189,66 @@ while ($row = mysqli_fetch_assoc($chart_result)) {
                 background-color: white;
                 color: black;
             }
+
             .no-print {
                 display: none !important;
             }
+
             table {
                 width: 100%;
                 border-collapse: collapse;
                 margin-bottom: 20px;
             }
-            th, td {
+
+            th,
+            td {
                 border: 1px solid #ddd;
                 padding: 8px;
                 text-align: left;
             }
+
             th {
                 background-color: #f2f2f2 !important;
                 -webkit-print-color-adjust: exact;
             }
+
             .print-header {
                 text-align: center;
                 margin-bottom: 20px;
             }
+
             .print-title {
                 font-size: 1.5rem;
                 font-weight: bold;
                 margin-bottom: 10px;
             }
+
             .print-summary {
                 display: grid;
                 grid-template-columns: repeat(3, 1fr);
                 gap: 15px;
                 margin-bottom: 20px;
             }
+
             .print-summary-item {
                 border-left: 4px solid #6b46c1;
                 padding: 10px;
             }
+
             .print-charts {
                 display: grid;
                 grid-template-columns: 1fr 1fr;
                 gap: 15px;
                 margin-bottom: 20px;
             }
+
             .print-chart {
                 height: 300px;
             }
         }
     </style>
 </head>
+
 <body class="text-gray-200">
     <div class="flex h-screen overflow-hidden">
         <!-- Sidebar -->
@@ -235,7 +260,7 @@ while ($row = mysqli_fetch_assoc($chart_result)) {
                 </div>
                 <h1 class="text-xl font-bold text-purple-300">MediPOS</h1>
             </div>
-            
+
             <!-- Navigation -->
             <nav class="flex-1 flex flex-col space-y-2">
                 <a href="dashboard.php" class="nav-item flex items-center p-3 space-x-3">
@@ -255,7 +280,7 @@ while ($row = mysqli_fetch_assoc($chart_result)) {
                     <span>Laporan</span>
                 </a>
             </nav>
-            
+
             <!-- User & Logout -->
             <div class="mt-auto">
                 <div class="flex items-center p-3 space-x-3 rounded-lg bg-[#3B3360]">
@@ -289,7 +314,7 @@ while ($row = mysqli_fetch_assoc($chart_result)) {
                         </div>
                     </div>
                 </div>
-                
+
                 <!-- Filter Form -->
                 <div class="bg-[#2A2540] rounded-xl shadow-lg p-6 mb-8 no-print">
                     <h2 class="text-lg font-semibold text-white mb-4">Filter Laporan</h2>
@@ -420,7 +445,7 @@ while ($row = mysqli_fetch_assoc($chart_result)) {
                         </div>
                         <p class="text-xs text-green-400 mt-2"><?= $report_type == 'periode' && !empty($start_date) ? 'Periode terpilih' : 'Keseluruhan' ?></p>
                     </div>
-                    
+
                     <div class="stat-card p-6 rounded-xl">
                         <div class="flex items-center justify-between">
                             <div>
@@ -433,7 +458,7 @@ while ($row = mysqli_fetch_assoc($chart_result)) {
                         </div>
                         <p class="text-xs text-green-400 mt-2"><?= $report_type == 'periode' && !empty($start_date) ? 'Periode terpilih' : 'Keseluruhan' ?></p>
                     </div>
-                    
+
                     <div class="stat-card p-6 rounded-xl">
                         <div class="flex items-center justify-between">
                             <div>
@@ -486,7 +511,11 @@ while ($row = mysqli_fetch_assoc($chart_result)) {
                 <div class="bg-[#2A2540] rounded-xl shadow-lg overflow-hidden">
                     <div class="px-6 py-4 border-b border-[#3B3360] flex justify-between items-center no-print">
                         <h3 class="font-semibold text-lg text-white">Daftar Transaksi</h3>
-                        <div class="flex space-x-2">
+                        <div class="flex space-x-2 items-center">
+                            <div class="relative mr-2">
+                                <span class="material-icons absolute left-3 top-1/2 transform -translate-y-1/2 text-purple-300">search</span>
+                                <input type="text" id="searchTransaksi" placeholder="Cari transaksi..." class="bg-[#2A2540] pl-10 pr-4 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 text-white" style="min-width:180px;">
+                            </div>
                             <button onclick="preparePrint()" class="bg-purple-500 hover:bg-purple-600 text-white px-3 py-1 rounded-lg text-sm flex items-center space-x-1 transition">
                                 <span class="material-icons text-sm">print</span>
                                 <span>Cetak</span>
@@ -513,13 +542,13 @@ while ($row = mysqli_fetch_assoc($chart_result)) {
                             <tbody class="bg-[#2A2540] divide-y divide-[#3B3360]">
                                 <?php mysqli_data_seek($transactions, 0); ?>
                                 <?php while ($transaction = mysqli_fetch_assoc($transactions)): ?>
-                                    <tr class="hover:bg-[#3B3360] transition">
-                                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-white">#TRX-<?= $transaction['id'] ?></td>
-                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-200"><?= date('d M Y, H:i', strtotime($transaction['date'])) ?></td>
-                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-200"><?= $transaction['admin_name'] ?></td>
-                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-200"><?= $transaction['member_name'] ?? '-' ?></td>
-                                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-white">Rp <?= number_format($transaction['total_price'], 0, ',', '.') ?></td>
-                                        <td class="px-6 py-4 whitespace-nowrap text-sm">
+                                    <tr class="hover:bg-[#3B3360] transition transaksi-row">
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-white transaksi-id">#TRX-<?= $transaction['id'] ?></td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-200 transaksi-date"><?= date('d M Y, H:i', strtotime($transaction['date'])) ?></td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-200 transaksi-admin"><?= $transaction['admin_name'] ?></td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-200 transaksi-member"><?= $transaction['member_name'] ?? '-' ?></td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-white transaksi-total">Rp <?= number_format($transaction['total_price'], 0, ',', '.') ?></td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm transaksi-method">
                                             <span class="px-2 py-1 <?= $transaction['payment_method'] == 'tunai' ? 'bg-green-900 bg-opacity-30 text-green-400' : 'bg-blue-900 bg-opacity-30 text-blue-400'; ?> rounded-full text-xs">
                                                 <?= ucfirst($transaction['payment_method']) ?>
                                             </span>
@@ -579,6 +608,35 @@ while ($row = mysqli_fetch_assoc($chart_result)) {
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 
     <script>
+        // Fitur search transaksi
+        document.addEventListener('DOMContentLoaded', function() {
+            const searchInput = document.getElementById('searchTransaksi');
+            if (searchInput) {
+                searchInput.addEventListener('input', function() {
+                    const keyword = this.value.toLowerCase();
+                    document.querySelectorAll('.transaksi-row').forEach(function(row) {
+                        const id = row.querySelector('.transaksi-id').textContent.toLowerCase();
+                        const date = row.querySelector('.transaksi-date').textContent.toLowerCase();
+                        const admin = row.querySelector('.transaksi-admin').textContent.toLowerCase();
+                        const member = row.querySelector('.transaksi-member').textContent.toLowerCase();
+                        const total = row.querySelector('.transaksi-total').textContent.toLowerCase();
+                        const method = row.querySelector('.transaksi-method').textContent.toLowerCase();
+                        if (
+                            id.includes(keyword) ||
+                            date.includes(keyword) ||
+                            admin.includes(keyword) ||
+                            member.includes(keyword) ||
+                            total.includes(keyword) ||
+                            method.includes(keyword)
+                        ) {
+                            row.style.display = '';
+                        } else {
+                            row.style.display = 'none';
+                        }
+                    });
+                });
+            }
+        });
         // Show/hide date range based on report type
         document.getElementById('report-type').addEventListener('change', function() {
             const dateRangeFields = document.getElementById('dateRangeFields');

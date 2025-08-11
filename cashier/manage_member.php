@@ -69,7 +69,7 @@ if ($editMode) {
     $stmt->bind_param("i", $id);
     $stmt->execute();
     $result = $stmt->get_result();
-    
+
     if ($result->num_rows > 0) {
         $formData = array_merge($formData, $result->fetch_assoc());
     } else {
@@ -95,6 +95,7 @@ if (isset($_SESSION['error'])) {
 ?>
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -107,43 +108,54 @@ if (isset($_SESSION['error'])) {
             background-color: #1E1B2E;
             font-family: 'Inter', sans-serif;
         }
+
         .sidebar {
             background: linear-gradient(180deg, #2A2540 0%, #1E1B2E 100%);
             border-right: 1px solid #3B3360;
         }
+
         .nav-item {
             transition: all 0.2s ease;
             border-radius: 0.5rem;
         }
+
         .nav-item:hover {
             background-color: rgba(155, 135, 245, 0.1);
         }
+
         .nav-item.active {
             background-color: #9B87F5;
             color: white;
         }
+
         .nav-item.active:hover {
             background-color: #8A75E5;
         }
+
         .stat-card {
             background: linear-gradient(135deg, #2A2540 0%, #3B3360 100%);
             box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
             transition: transform 0.3s ease;
         }
+
         .stat-card:hover {
             transform: translateY(-2px);
         }
+
         .table-row:hover {
             background-color: rgba(155, 135, 245, 0.05);
         }
+
         .badge-active {
             background-color: rgba(74, 222, 128, 0.1);
             color: #4ADE80;
         }
+
         .badge-inactive {
             background-color: rgba(248, 113, 113, 0.1);
             color: #F87171;
         }
+
         .form-input {
             background-color: #2A2540;
             border: 1px solid #3B3360;
@@ -152,21 +164,25 @@ if (isset($_SESSION['error'])) {
             padding: 0.5rem 0.75rem;
             width: 100%;
         }
+
         .form-input:focus {
             outline: none;
             border-color: #9B87F5;
             box-shadow: 0 0 0 3px rgba(155, 135, 245, 0.2);
         }
+
         .modal-content {
             background-color: #2A2540;
             border: 1px solid #3B3360;
         }
+
         .modal-header {
             border-bottom: 1px solid #3B3360;
             background-color: #3B3360;
         }
     </style>
 </head>
+
 <body class="text-gray-200">
     <div class="flex h-screen overflow-hidden">
         <!-- Sidebar -->
@@ -178,7 +194,7 @@ if (isset($_SESSION['error'])) {
                 </div>
                 <h1 class="text-xl font-bold text-purple-300">MediPOS</h1>
             </div>
-            
+
             <!-- Navigation -->
             <nav class="flex-1 flex flex-col space-y-2">
                 <a href="dashboard.php" class="nav-item flex items-center p-3 space-x-3">
@@ -198,7 +214,7 @@ if (isset($_SESSION['error'])) {
                     <span>Laporan</span>
                 </a>
             </nav>
-            
+
             <!-- User & Logout -->
             <div class="mt-auto">
                 <div class="flex items-center p-3 space-x-3 rounded-lg bg-[#3B3360]">
@@ -228,7 +244,7 @@ if (isset($_SESSION['error'])) {
                     <div class="flex items-center space-x-4">
                         <div class="relative">
                             <span class="material-icons absolute left-3 top-1/2 transform -translate-y-1/2 text-purple-300">search</span>
-                            <input type="text" placeholder="Cari member..." class="bg-[#2A2540] pl-10 pr-4 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500">
+                            <input type="text" id="searchMember" placeholder="Cari member..." class="bg-[#2A2540] pl-10 pr-4 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500">
                         </div>
                         <a href="manage_member.php?add=1" class="bg-purple-500 hover:bg-purple-600 text-white px-4 py-2 rounded-lg flex items-center space-x-2 transition">
                             <span class="material-icons">add</span>
@@ -236,72 +252,73 @@ if (isset($_SESSION['error'])) {
                         </a>
                     </div>
                 </div>
-                
+
                 <!-- Success/Error Messages -->
                 <?php if (isset($_SESSION['message'])): ?>
                     <div class="mb-6 p-4 rounded-lg <?= $_SESSION['message_type'] == 'error' ? 'bg-red-500 text-white' : 'bg-green-500 text-white' ?>">
                         <?= $_SESSION['message'] ?>
                     </div>
-                    <?php unset($_SESSION['message']); unset($_SESSION['message_type']); ?>
+                    <?php unset($_SESSION['message']);
+                    unset($_SESSION['message_type']); ?>
                 <?php endif; ?>
 
                 <!-- Form Modal -->
                 <?php if (isset($_GET['add']) || $editMode): ?>
-                <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-                    <div class="modal-content rounded-lg shadow-xl w-full max-w-md">
-                        <div class="modal-header px-6 py-4 rounded-t-lg">
-                            <h3 class="text-lg font-semibold text-white">
-                                <?= $editMode ? 'Edit Member' : 'Tambah Member Baru' ?>
-                            </h3>
+                    <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                        <div class="modal-content rounded-lg shadow-xl w-full max-w-md">
+                            <div class="modal-header px-6 py-4 rounded-t-lg">
+                                <h3 class="text-lg font-semibold text-white">
+                                    <?= $editMode ? 'Edit Member' : 'Tambah Member Baru' ?>
+                                </h3>
+                            </div>
+
+                            <form action="proses_member.php" method="POST" class="p-6">
+                                <input type="hidden" name="id" value="<?= $formData['id'] ?>">
+
+                                <div class="mb-4">
+                                    <label class="block text-sm font-medium text-purple-300 mb-1">Nama Member</label>
+                                    <input type="text" name="name" value="<?= htmlspecialchars($formData['name']) ?>"
+                                        class="form-input" required>
+                                    <?php if (!empty($errors['name'])): ?>
+                                        <p class="text-sm text-red-400 mt-1"><?= $errors['name'] ?></p>
+                                    <?php endif; ?>
+                                </div>
+
+                                <div class="mb-4">
+                                    <label class="block text-sm font-medium text-purple-300 mb-1">Nomor Telepon</label>
+                                    <input type="text" name="phone" value="<?= htmlspecialchars($formData['phone']) ?>"
+                                        class="form-input" required
+                                        placeholder="Contoh: 081234567890">
+                                    <?php if (!empty($errors['phone'])): ?>
+                                        <p class="text-sm text-red-400 mt-1"><?= $errors['phone'] ?></p>
+                                    <?php endif; ?>
+                                    <?php if (!empty($errors['general'])): ?>
+                                        <p class="text-sm text-red-400 mt-1"><?= $errors['general'] ?></p>
+                                    <?php endif; ?>
+                                </div>
+
+                                <?php if ($editMode): ?>
+                                    <div class="mb-4">
+                                        <label class="block text-sm font-medium text-purple-300 mb-1">Status</label>
+                                        <select name="status" class="form-input">
+                                            <option value="active" <?= $formData['status'] == 'active' ? 'selected' : '' ?>>Aktif</option>
+                                            <option value="non-active" <?= $formData['status'] == 'non-active' ? 'selected' : '' ?>>Non-Aktif</option>
+                                        </select>
+                                    </div>
+                                <?php endif; ?>
+
+                                <div class="flex justify-end space-x-3 mt-6">
+                                    <button type="submit" name="simpan" class="bg-purple-500 hover:bg-purple-600 text-white px-4 py-2 rounded-lg flex items-center space-x-2 transition">
+                                        <span class="material-icons">save</span>
+                                        <span>Simpan</span>
+                                    </button>
+                                    <a href="manage_member.php" class="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-lg transition">
+                                        Batal
+                                    </a>
+                                </div>
+                            </form>
                         </div>
-                        
-                        <form action="proses_member.php" method="POST" class="p-6">
-                            <input type="hidden" name="id" value="<?= $formData['id'] ?>">
-                            
-                            <div class="mb-4">
-                                <label class="block text-sm font-medium text-purple-300 mb-1">Nama Member</label>
-                                <input type="text" name="name" value="<?= htmlspecialchars($formData['name']) ?>" 
-                                       class="form-input" required>
-                                <?php if (!empty($errors['name'])): ?>
-                                    <p class="text-sm text-red-400 mt-1"><?= $errors['name'] ?></p>
-                                <?php endif; ?>
-                            </div>
-
-                            <div class="mb-4">
-                                <label class="block text-sm font-medium text-purple-300 mb-1">Nomor Telepon</label>
-                                <input type="text" name="phone" value="<?= htmlspecialchars($formData['phone']) ?>" 
-                                       class="form-input" required
-                                       placeholder="Contoh: 081234567890">
-                                <?php if (!empty($errors['phone'])): ?>
-                                    <p class="text-sm text-red-400 mt-1"><?= $errors['phone'] ?></p>
-                                <?php endif; ?>
-                                <?php if (!empty($errors['general'])): ?>
-                                    <p class="text-sm text-red-400 mt-1"><?= $errors['general'] ?></p>
-                                <?php endif; ?>
-                            </div>
-                            
-                            <?php if ($editMode): ?>
-                            <div class="mb-4">
-                                <label class="block text-sm font-medium text-purple-300 mb-1">Status</label>
-                                <select name="status" class="form-input">
-                                    <option value="active" <?= $formData['status'] == 'active' ? 'selected' : '' ?>>Aktif</option>
-                                    <option value="non-active" <?= $formData['status'] == 'non-active' ? 'selected' : '' ?>>Non-Aktif</option>
-                                </select>
-                            </div>
-                            <?php endif; ?>
-
-                            <div class="flex justify-end space-x-3 mt-6">
-                                <button type="submit" name="simpan" class="bg-purple-500 hover:bg-purple-600 text-white px-4 py-2 rounded-lg flex items-center space-x-2 transition">
-                                    <span class="material-icons">save</span>
-                                    <span>Simpan</span>
-                                </button>
-                                <a href="manage_member.php" class="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-lg transition">
-                                    Batal
-                                </a>
-                            </div>
-                        </form>
                     </div>
-                </div>
                 <?php endif; ?>
 
                 <!-- Member Table -->
@@ -321,39 +338,39 @@ if (isset($_SESSION['error'])) {
                             <tbody class="divide-y divide-[#3B3360]">
                                 <?php if (!empty($members)): ?>
                                     <?php foreach ($members as $index => $member): ?>
-                                    <tr class="hover:bg-[#3B3360] transition">
-                                        <td class="py-4 px-4"><?= $index + 1 ?></td>
-                                        <td class="py-4 px-4 font-medium"><?= htmlspecialchars($member['name']) ?></td>
-                                        <td class="py-4 px-4"><?= htmlspecialchars($member['phone']) ?></td>
-                                        <td class="py-4 px-4 text-center"><?= number_format($member['point']) ?></td>
-                                        <td class="py-4 px-4 text-center">
-                                            <span class="inline-block px-3 py-1 rounded-full text-xs font-medium <?= $member['status'] == 'active' ? 'badge-active' : 'badge-inactive' ?>">
-                                                <?= ucfirst($member['status']) ?>
-                                            </span>
-                                        </td>
-                                        <td class="py-4 px-4 text-center space-x-2">
-                                            <a href="manage_member.php?edit=<?= $member['id'] ?>" class="inline-block text-purple-400 hover:text-purple-300 transition" title="Edit">
-                                                <span class="material-icons">edit</span>
-                                            </a>
-                                            <form action="proses_member.php" method="POST" class="inline" onsubmit="return confirm('Apakah Anda yakin ingin menghapus member ini?')">
-                                                <input type="hidden" name="id" value="<?= $member['id'] ?>">
-                                                <button type="submit" name="hapus" 
+                                        <tr class="hover:bg-[#3B3360] transition member-row">
+                                            <td class="py-4 px-4"><?= $index + 1 ?></td>
+                                            <td class="py-4 px-4 font-medium member-name"><?= htmlspecialchars($member['name']) ?></td>
+                                            <td class="py-4 px-4 member-phone"><?= htmlspecialchars($member['phone']) ?></td>
+                                            <td class="py-4 px-4 text-center"><?= number_format($member['point']) ?></td>
+                                            <td class="py-4 px-4 text-center">
+                                                <span class="inline-block px-3 py-1 rounded-full text-xs font-medium <?= $member['status'] == 'active' ? 'badge-active' : 'badge-inactive' ?>">
+                                                    <?= ucfirst($member['status']) ?>
+                                                </span>
+                                            </td>
+                                            <td class="py-4 px-4 text-center space-x-2">
+                                                <a href="manage_member.php?edit=<?= $member['id'] ?>" class="inline-block text-purple-400 hover:text-purple-300 transition" title="Edit">
+                                                    <span class="material-icons">edit</span>
+                                                </a>
+                                                <form action="proses_member.php" method="POST" class="inline" onsubmit="return confirm('Apakah Anda yakin ingin menghapus member ini?')">
+                                                    <input type="hidden" name="id" value="<?= $member['id'] ?>">
+                                                    <button type="submit" name="hapus"
                                                         class="text-red-400 hover:text-red-300 transition <?= $member['status'] == 'active' ? 'opacity-50 cursor-not-allowed' : '' ?>"
                                                         title="Hapus"
                                                         <?= $member['status'] == 'active' ? 'disabled' : '' ?>>
-                                                    <span class="material-icons">delete</span>
-                                                </button>
-                                            </form>
-                                            <?php if($member['status'] == 'non-active'): ?>
-                                            <form action="proses_member.php" method="POST" class="inline">
-                                                <input type="hidden" name="id" value="<?= $member['id'] ?>">
-                                                <button type="submit" name="activate" class="text-blue-400 hover:text-blue-300 transition" title="Aktifkan">
-                                                    <span class="material-icons">refresh</span>
-                                                </button>
-                                            </form>
-                                            <?php endif; ?>
-                                        </td>
-                                    </tr>
+                                                        <span class="material-icons">delete</span>
+                                                    </button>
+                                                </form>
+                                                <?php if ($member['status'] == 'non-active'): ?>
+                                                    <form action="proses_member.php" method="POST" class="inline">
+                                                        <input type="hidden" name="id" value="<?= $member['id'] ?>">
+                                                        <button type="submit" name="activate" class="text-blue-400 hover:text-blue-300 transition" title="Aktifkan">
+                                                            <span class="material-icons">refresh</span>
+                                                        </button>
+                                                    </form>
+                                                <?php endif; ?>
+                                            </td>
+                                        </tr>
                                     <?php endforeach; ?>
                                 <?php else: ?>
                                     <tr>
@@ -372,20 +389,36 @@ if (isset($_SESSION['error'])) {
     </div>
 
     <script>
+        // Fitur search member
+        document.addEventListener('DOMContentLoaded', function() {
+            const searchInput = document.getElementById('searchMember');
+            searchInput.addEventListener('input', function() {
+                const keyword = this.value.toLowerCase();
+                document.querySelectorAll('.member-row').forEach(function(row) {
+                    const name = row.querySelector('.member-name').textContent.toLowerCase();
+                    const phone = row.querySelector('.member-phone').textContent.toLowerCase();
+                    if (name.includes(keyword) || phone.includes(keyword)) {
+                        row.style.display = '';
+                    } else {
+                        row.style.display = 'none';
+                    }
+                });
+            });
+        });
         // Update date and time
         function updateDateTime() {
             const now = new Date();
-            const options = { 
-                weekday: 'long', 
-                year: 'numeric', 
-                month: 'long', 
+            const options = {
+                weekday: 'long',
+                year: 'numeric',
+                month: 'long',
                 day: 'numeric',
                 hour: '2-digit',
                 minute: '2-digit'
             };
             document.getElementById('currentDateTime').textContent = now.toLocaleDateString('id-ID', options);
         }
-        
+
         setInterval(updateDateTime, 1000);
         updateDateTime();
 
@@ -398,4 +431,5 @@ if (isset($_SESSION['error'])) {
         });
     </script>
 </body>
+
 </html>

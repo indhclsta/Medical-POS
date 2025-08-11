@@ -18,6 +18,13 @@ if ($_SESSION['role'] !== 'cashier') {
     exit();
 }
 
+// Validate cart exists
+if (!isset($_SESSION['cart']) || empty($_SESSION['cart'])) {
+    $_SESSION['error_message'] = "Keranjang belanja kosong";
+    header("Location: ../cashier/transaksi.php");
+    exit();
+}
+
 $cashier_id = $_SESSION['user_id'];
 
 // Validate input data
@@ -31,14 +38,22 @@ foreach ($required_fields as $field) {
 }
 
 // Process data
-$total = (int)$_POST['total'];
-$amount = (int)$_POST['amount'];
+$total = (float)$_POST['total'];
+$amount = (float)$_POST['amount'];
 $payment_method = $_POST['payment_method'];
 $phone = !empty($_POST['phone']) ? $_POST['phone'] : null;
 $discount = !empty($_POST['discount']) ? (float)$_POST['discount'] : 0.00;
 $change = $amount - $total;
 
-// Validate payment
+// Validate payment method
+$allowed_payment_methods = ['tunai', 'qris'];
+if (!in_array($payment_method, $allowed_payment_methods)) {
+    $_SESSION['error_message'] = "Metode pembayaran tidak valid. Harus tunai atau qris";
+    header("Location: ../cashier/checkout.php");
+    exit();
+}
+
+// Validate payment amount
 if ($amount < $total) {
     $_SESSION['error_message'] = "Nominal pembayaran kurang! Kurang " . format_currency($total - $amount);
     header("Location: ../cashier/checkout.php");
@@ -48,6 +63,9 @@ if ($amount < $total) {
 function format_currency($amount) {
     return 'Rp ' . number_format($amount, 0, ',', '.');
 }
+
+// Debug payment method
+error_log("Processing transaction with payment method: " . $payment_method);
 
 // Start transaction
 $conn->begin_transaction();
@@ -92,19 +110,34 @@ try {
     
     $transaction_id = $conn->insert_id;
     
-    // 2. Save transaction details
+    // 2. Save transaction details and update stock
     foreach ($_SESSION['cart'] as $item) {
         // Validate item
         if (!isset($item['id'], $item['quantity'], $item['price'], $item['name'])) {
-            throw new Exception("Format keranjang tidak valid");
+            throw new Exception("Format item keranjang tidak valid");
         }
         
-        $product_id = $item['id'];
-        $quantity = $item['quantity'];
-        $price = $item['price'];
+        $product_id = (int)$item['id'];
+        $quantity = (int)$item['quantity'];
+        $price = (float)$item['price'];
         $subtotal = $price * $quantity;
         
-        // Save detail
+        // Check product stock
+        $stmt_check = $conn->prepare("SELECT qty FROM products WHERE id = ?");
+        $stmt_check->bind_param("i", $product_id);
+        $stmt_check->execute();
+        $result = $stmt_check->get_result();
+        
+        if ($result->num_rows === 0) {
+            throw new Exception("Produk tidak ditemukan");
+        }
+        
+        $product = $result->fetch_assoc();
+        if ($product['qty'] < $quantity) {
+            throw new Exception("Stok produk " . $item['name'] . " tidak mencukupi");
+        }
+        
+        // Save transaction detail
         $stmt_detail = $conn->prepare("INSERT INTO transaction_details 
                                      (transaction_id, product_id, quantity, subtotal, harga) 
                                      VALUES (?, ?, ?, ?, ?)");
@@ -114,7 +147,7 @@ try {
             throw new Exception("Gagal menyimpan detail transaksi: " . $stmt_detail->error);
         }
         
-        // Update stock
+        // Update product stock
         $stmt_stock = $conn->prepare("UPDATE products SET qty = qty - ? WHERE id = ?");
         $stmt_stock->bind_param("ii", $quantity, $product_id);
         
@@ -133,41 +166,36 @@ try {
         }
     }
     
+    // 4. Log the transaction activity
+    $activity = "Melakukan transaksi #$transaction_id dengan total Rp " . number_format($total, 0, ',', '.');
+    $stmt_log = $conn->prepare("INSERT INTO activity_logs (admin_id, username, activity) VALUES (?, ?, ?)");
+    $stmt_log->bind_param("iss", $cashier_id, $_SESSION['username'], $activity);
+    $stmt_log->execute();
+    
     // Commit transaction
     $conn->commit();
     
-    // Prepare receipt data
+    // Prepare receipt data (optional for PDF generation)
     $receipt_data = [
         'transaction_id' => $transaction_id,
         'date' => date('d/m/Y H:i:s'),
         'cashier' => $_SESSION['username'],
         'member_phone' => $phone,
-        'items' => array_map(function($item) {
-            return [
-                'name' => $item['name'],
-                'quantity' => $item['quantity'],
-                'price' => $item['price'],
-                'subtotal' => $item['price'] * $item['quantity']
-            ];
-        }, $_SESSION['cart']),
+        'items' => $_SESSION['cart'],
         'subtotal' => array_reduce($_SESSION['cart'], function($carry, $item) {
             return $carry + ($item['price'] * $item['quantity']);
         }, 0),
         'discount' => $discount,
-        'discount_amount' => array_reduce($_SESSION['cart'], function($carry, $item) {
-            return $carry + ($item['price'] * $item['quantity']);
-        }, 0) * $discount,
         'total' => $total,
         'amount_paid' => $amount,
-        'change' => $change
+        'change' => $change,
+        'payment_method' => $payment_method
     ];
     
-   
+    // Clear cart
+    unset($_SESSION['cart']);
     
-    // Clear cart data
-    unset($_SESSION['cart'], $_SESSION['cart_expiry']);
-    
-    // Redirect to checkout to show receipt
+    // Redirect to success page
     header("Location: ../service/sukses.php?id=$transaction_id");
     exit();
 

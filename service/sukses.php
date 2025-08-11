@@ -36,11 +36,11 @@ $detail_stmt->execute();
 $detail_result = $detail_stmt->get_result();
 
 $details = [];
-$subtotal_before_discount = 0; // Tambahkan ini
+$subtotal_before_discount = 0;
 
 while ($row = $detail_result->fetch_assoc()) {
     $details[] = $row;
-    $subtotal_before_discount += $row['subtotal']; // Hitung subtotal sebelum diskon
+    $subtotal_before_discount += $row['subtotal'];
 }
 
 // Hitung jumlah diskon
@@ -51,187 +51,204 @@ $total_after_discount = $subtotal_before_discount - $discount_amount;
 <html lang="id">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Nota Transaksi - MediPOS</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-        tailwind.config = {
-            theme: {
-                extend: {
-                    colors: {
-                        purple: {
-                            50: '#f5f0ff',
-                            100: '#e6d6ff',
-                            400: '#9b59b6',
-                            500: '#6a0dad',
-                            600: '#5a009c',
-                            700: '#4b0082',
-                        }
-                    }
-                }
-            }
-        }
-    </script>
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css" rel="stylesheet"/>
     <style>
         @media print {
             body * { visibility: hidden; }
-            .receipt, .receipt * { visibility: visible; }
-            .receipt { 
+            .receipt-container, .receipt-container * { visibility: visible; }
+            .receipt-container { 
                 position: absolute; 
                 left: 0; 
-                top: 0; 
+                top: 0;
                 width: 100%;
-                background-color: white !important;
-                color: black !important;
+                padding: 0;
+                margin: 0;
+                background: none;
             }
             .no-print { display: none !important; }
+            .receipt {
+                box-shadow: none;
+                border: none;
+                width: 80mm; /* Lebar struk standar */
+                margin: 0 auto;
+            }
+        }
+        body {
+            background-color: #1E1B2E;
+            font-family: 'Inter', sans-serif;
+        }
+        .receipt-container {
+            display: flex;
+            justify-content: center;
+            padding: 20px;
         }
         .receipt {
-            max-width: 500px;
-            margin: 0 auto;
+            width: 80mm; /* Lebar struk standar */
             background-color: white;
-            padding: 20px;
-            border-radius: 8px;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-            border: 2px solid #6a0dad;
+            padding: 15px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+            border-radius: 0; /* Struk biasanya tidak punya border radius */
+            font-family: 'Courier New', monospace; /* Font struk klasik */
+            color: black;
+            border: 1px dashed #ccc; /* Garis putus-putus tipis */
         }
-        .header-bg {
+        .receipt-header {
+            text-align: center;
+            margin-bottom: 10px;
+            border-bottom: 1px dashed #000;
+            padding-bottom: 10px;
+        }
+        .receipt-title {
+            font-weight: bold;
+            font-size: 18px;
+            margin-bottom: 5px;
+        }
+        .receipt-address {
+            font-size: 12px;
+            margin-bottom: 5px;
+        }
+        .receipt-divider {
+            border-top: 1px dashed #000;
+            margin: 10px 0;
+        }
+        .receipt-item {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 5px;
+            font-size: 13px;
+        }
+        .receipt-total {
+            font-weight: bold;
+            margin-top: 10px;
+            border-top: 1px dashed #000;
+            padding-top: 10px;
+        }
+        .receipt-footer {
+            text-align: center;
+            font-size: 11px;
+            margin-top: 15px;
+            border-top: 1px dashed #000;
+            padding-top: 10px;
+        }
+        .btn-print {
             background-color: #6a0dad;
+            color: white;
         }
     </style>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css" rel="stylesheet"/>
 </head>
-<body class="bg-gray-100">
+<body class="bg-[#1E1B2E]">
     <div class="container mx-auto p-4">
         <div class="flex justify-between mb-4 no-print">
-            <a href="../cashier/transaksi.php" class="px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600">
-                <i class="fas fa-arrow-left mr-2"></i>Kembali
+            <a href="../cashier/transaksi.php" class="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 flex items-center space-x-2 transition">
+                <i class="fas fa-arrow-left"></i>
+                <span>Kembali</span>
             </a>
-            <div class="space-x-2">
-                <button onclick="window.print()" class="px-4 py-2 bg-purple-500 text-white rounded-lg hover:bg-purple-600">
-                    <i class="fas fa-print mr-2"></i>Cetak
+            <div class="flex space-x-2">
+                <button onclick="window.print()" class="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 flex items-center space-x-2 transition">
+                    <i class="fas fa-print"></i>
+                    <span>Cetak</span>
                 </button>
-                <a href="download_receipt.php?id=<?= $transaction_id ?>" class="px-4 py-2 bg-purple-400 text-white rounded-lg hover:bg-purple-500">
-                    <i class="fas fa-download mr-2"></i>PDF
+                <a href="download_receipt.php?id=<?= $transaction_id ?>" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center space-x-2 transition">
+                    <i class="fas fa-download"></i>
+                    <span>PDF</span>
                 </a>
                 <?php if ($transaction['fid_member']): ?>
-                <button onclick="sendToWhatsApp()" class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700">
-                    <i class="fab fa-whatsapp mr-2"></i>WhatsApp
+                <button onclick="sendToWhatsApp()" class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 flex items-center space-x-2 transition">
+                    <i class="fab fa-whatsapp"></i>
+                    <span>WhatsApp</span>
                 </button>
                 <?php endif; ?>
             </div>
         </div>
 
-        <div class="receipt">
-            <!-- Header dengan background ungu -->
-            <div class="header-bg text-white p-4 rounded-t-lg -mx-4 -mt-4 mb-4">
-                <div class="text-center">
-                    <h1 class="text-2xl font-bold">MediPOS</h1>
-                    <p class="text-sm opacity-90">Jl. Swadaya 4 Kp. Pulo Jahe No. 71, Jakarta Timur</p>
-                    <p class="text-sm opacity-90">Telp: (081) 2844-21151</p>
+        <div class="receipt-container">
+            <div class="receipt">
+                <!-- Header Struk -->
+                <div class="receipt-header">
+                    <div class="receipt-title">MEDIPOS</div>
+                    <div class="receipt-address">Jl. Swadaya 4 Kp. Pulo Jahe No. 71</div>
+                    <div class="receipt-address">Jakarta Timur</div>
+                    <div class="receipt-address">Telp: (081) 2844-21151</div>
+                    <div class="receipt-address"><?= date('d/m/Y') ?></div>
                 </div>
-            </div>
 
-            <div class="text-center mb-4">
-                <p class="text-sm text-gray-600"><?= date('d/m/Y H:i:s') ?></p>
-            </div>
-
-            <div class="border-b border-purple-200 pb-2 mb-4">
-                <div class="flex justify-between text-sm">
-                    <span class="text-gray-600">No. Transaksi:</span>
-                    <span class="font-medium text-purple-600">TRX-<?= str_pad($transaction['id'], 6, "0", STR_PAD_LEFT) ?></span>
+                <!-- Info Transaksi -->
+                <div class="receipt-item">
+                    <span>No. TRX:</span>
+                    <span>TRX-<?= str_pad($transaction['id'], 6, "0", STR_PAD_LEFT) ?></span>
                 </div>
-                <div class="flex justify-between text-sm">
-                    <span class="text-gray-600">Kasir:</span>
-                    <span class="font-medium"><?= htmlspecialchars($transaction['kasir']) ?></span>
+                <div class="receipt-item">
+                    <span>Kasir:</span>
+                    <span><?= htmlspecialchars($transaction['kasir']) ?></span>
                 </div>
+                
                 <?php if ($transaction['fid_member']): ?>
-                <div class="flex justify-between text-sm">
-                    <span class="text-gray-600">Member ID:</span>
-                    <span class="font-medium text-purple-600">M-<?= str_pad($transaction['fid_member'], 6, "0", STR_PAD_LEFT) ?></span>
+                <div class="receipt-divider"></div>
+                <div class="receipt-item">
+                    <span>Member:</span>
+                    <span>M-<?= str_pad($transaction['fid_member'], 6, "0", STR_PAD_LEFT) ?></span>
                 </div>
-                <div class="flex justify-between text-sm">
-                    <span class="text-gray-600">No. Tlp Member:</span>
-                    <span class="font-medium"><?= htmlspecialchars($transaction['phone']) ?></span>
-                </div>
-                <div class="flex justify-between text-sm">
-                    <span class="text-gray-600">Poin Didapat:</span>
-                    <span class="font-medium text-purple-600"><?= $transaction['points'] ?> poin</span>
-                </div>
-                <?php if ($transaction['discount'] > 0): ?>
-                <div class="flex justify-between text-sm">
-                    <span class="text-gray-600">Diskon Member:</span>
-                    <span class="font-medium text-purple-500"><?= ($transaction['discount'] * 100) ?>%</span>
+                <div class="receipt-item">
+                    <span>Poin:</span>
+                    <span><?= $transaction['points'] ?> pts</span>
                 </div>
                 <?php endif; ?>
-                <?php endif; ?>
-            </div>
 
-            <!-- Daftar Produk -->
-            <div class="mb-4">
-                <table class="w-full">
-                    <thead>
-                        <tr class="border-b border-purple-200">
-                            <th class="text-left pb-2 text-sm text-purple-700">Produk</th>
-                            <th class="text-right pb-2 text-sm text-purple-700">Qty</th>
-                            <th class="text-right pb-2 text-sm text-purple-700">Harga</th>
-                            <th class="text-right pb-2 text-sm text-purple-700">Subtotal</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <?php foreach ($details as $item): ?>
-                        <tr class="border-b border-purple-100">
-                            <td class="py-2 text-sm"><?= htmlspecialchars($item['product_name']) ?></td>
-                            <td class="py-2 text-right text-sm"><?= $item['quantity'] ?></td>
-                            <td class="py-2 text-right text-sm">Rp <?= number_format($item['harga'], 0, ',', '.') ?></td>
-                            <td class="py-2 text-right text-sm">Rp <?= number_format($item['subtotal'], 0, ',', '.') ?></td>
-                        </tr>
-                        <?php endforeach; ?>
-                    </tbody>
-                </table>
-            </div>
+                <div class="receipt-divider"></div>
 
-            <!-- Total Pembayaran -->
-            <div class="border-t border-purple-200 pt-2 mb-4">
+                <!-- Daftar Produk -->
+                <?php foreach ($details as $item): ?>
+                <div class="receipt-item">
+                    <span><?= htmlspecialchars($item['product_name']) ?> x<?= $item['quantity'] ?></span>
+                    <span>Rp <?= number_format($item['subtotal'], 0, ',', '.') ?></span>
+                </div>
+                <?php endforeach; ?>
+
+                <div class="receipt-divider"></div>
+
+                <!-- Total Pembayaran -->
                 <?php if ($transaction['discount'] > 0): ?>
-                <div class="flex justify-between text-sm">
-                    <span class="text-gray-600">Subtotal:</span>
+                <div class="receipt-item">
+                    <span>Subtotal:</span>
                     <span>Rp <?= number_format($subtotal_before_discount, 0, ',', '.') ?></span>
                 </div>
-                <div class="flex justify-between text-sm">
-                    <span class="text-gray-600">Diskon (<?= ($transaction['discount'] * 100) ?>%):</span>
-                    <span class="text-purple-500">- Rp <?= number_format($discount_amount, 0, ',', '.') ?></span>
+                <div class="receipt-item">
+                    <span>Diskon (<?= ($transaction['discount'] * 100) ?>%):</span>
+                    <span>- Rp <?= number_format($discount_amount, 0, ',', '.') ?></span>
                 </div>
                 <?php endif; ?>
-                <div class="flex justify-between font-bold mt-2 text-lg text-purple-700">
+
+                <div class="receipt-item receipt-total">
                     <span>TOTAL:</span>
                     <span>Rp <?= number_format($transaction['total_price'], 0, ',', '.') ?></span>
                 </div>
-                <div class="flex justify-between text-sm mt-2">
-                    <span class="text-gray-600">Pembayaran:</span>
-                    <span class="font-medium"><?= ucfirst($transaction['payment_method']) ?></span>
-                </div>
-                <div class="flex justify-between text-sm">
-                    <span class="text-gray-600">Dibayar:</span>
-                    <span class="font-medium">Rp <?= number_format($transaction['paid_amount'], 0, ',', '.') ?></span>
-                </div>
-                <div class="flex justify-between text-sm">
-                    <span class="text-gray-600">Kembali:</span>
-                    <span class="font-medium">Rp <?= number_format($transaction['kembalian'], 0, ',', '.') ?></span>
-                </div>
-            </div>
 
-            <!-- Footer -->
-            <div class="text-center text-xs text-purple-600 mt-6">
-                <p>Terima kasih telah berbelanja di MediPOS</p>
-                <p>Barang yang sudah dibeli tidak dapat ditukar/dikembalikan</p>
-                <p class="mt-2 font-medium">www.medipos.com</p>
-            </div>
+                <div class="receipt-item">
+                    <span>Pembayaran:</span>
+                    <span><?= ucfirst($transaction['payment_method']) ?></span>
+                </div>
+                <div class="receipt-item">
+                    <span>Tunai:</span>
+                    <span>Rp <?= number_format($transaction['paid_amount'], 0, ',', '.') ?></span>
+                </div>
+                <div class="receipt-item">
+                    <span>Kembali:</span>
+                    <span>Rp <?= number_format($transaction['kembalian'], 0, ',', '.') ?></span>
+                </div>
 
-            <!-- QR Code -->
-            <div class="flex justify-center mt-4">
-                <img src="https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=TRX-<?= $transaction_id ?>" 
-                     alt="QR Code Transaksi" 
-                     class="h-20 w-20 border border-purple-200 p-1">
+                <!-- Footer Struk -->
+                <div class="receipt-footer">
+                    <div>Terima kasih telah berbelanja</div>
+                    <div>Barang yang sudah dibeli</div>
+                    <div>tidak dapat ditukar/dikembalikan</div>
+                    <div class="mt-2">www.medipos.com</div>
+                </div>
+
+                
             </div>
         </div>
     </div>
