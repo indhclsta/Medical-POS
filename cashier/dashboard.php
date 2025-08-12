@@ -1,4 +1,4 @@
-<?php 
+<?php
 require_once '../service/connection.php';
 session_start();
 if (!isset($_SESSION['email'])) {
@@ -49,18 +49,24 @@ if (isset($_GET['search']) && !empty($_GET['search'])) {
                                t.payment_method LIKE '%$searchKeyword%' OR
                                t.date LIKE '%$searchKeyword%') ";
 }
-
+$userId = $_SESSION['id'];
+$userQuery = "SELECT username, image FROM admin WHERE id = $userId";
+$userResult = mysqli_query($conn, $userQuery);
+$userData = mysqli_fetch_assoc($userResult);
+$profilePicture = $userData['image'] ?? 'default.jpg';
 // Get recent transactions with search condition
 $recentTransactionsQuery = "SELECT t.id, t.date, t.total_price, t.payment_method, a.username 
                             FROM transactions t
                             JOIN admin a ON t.fid_admin = a.id
-                            $searchCondition
+                            WHERE t.fid_admin = $userId 
+                            " . ($searchCondition ? 'AND' . substr($searchCondition, 6) : '') . "
                             ORDER BY t.date DESC 
                             LIMIT 5";
 $recentTransactionsResult = mysqli_query($conn, $recentTransactionsQuery);
 ?>
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -71,37 +77,46 @@ $recentTransactionsResult = mysqli_query($conn, $recentTransactionsQuery);
             background-color: #1E1B2E;
             font-family: 'Inter', sans-serif;
         }
+
         .sidebar {
             background: linear-gradient(180deg, #2A2540 0%, #1E1B2E 100%);
             border-right: 1px solid #3B3360;
         }
+
         .nav-item {
             transition: all 0.2s ease;
             border-radius: 0.5rem;
         }
+
         .nav-item:hover {
             background-color: rgba(155, 135, 245, 0.1);
         }
+
         .nav-item.active {
             background-color: #9B87F5;
             color: white;
         }
+
         .nav-item.active:hover {
             background-color: #8A75E5;
         }
+
         .stat-card {
             background: linear-gradient(135deg, #2A2540 0%, #3B3360 100%);
             box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
             transition: transform 0.3s ease;
         }
+
         .stat-card:hover {
             transform: translateY(-2px);
         }
+
         .table-row:hover {
             background-color: rgba(155, 135, 245, 0.05);
         }
     </style>
 </head>
+
 <body class="text-gray-200">
     <div class="flex h-screen overflow-hidden">
         <!-- Sidebar -->
@@ -113,7 +128,7 @@ $recentTransactionsResult = mysqli_query($conn, $recentTransactionsQuery);
                 </div>
                 <h1 class="text-xl font-bold text-purple-300">MediPOS</h1>
             </div>
-            
+
             <!-- Navigation -->
             <nav class="flex-1 flex flex-col space-y-2">
                 <a href="dashboard.php" class="nav-item active flex items-center p-3 space-x-3">
@@ -133,13 +148,17 @@ $recentTransactionsResult = mysqli_query($conn, $recentTransactionsQuery);
                     <span>Laporan</span>
                 </a>
             </nav>
-            
+
             <!-- User & Logout -->
             <div class="mt-auto">
                 <div class="flex items-center p-3 space-x-3 rounded-lg bg-[#3B3360]">
-                    <div class="w-10 h-10 rounded-full bg-purple-500 flex items-center justify-center">
-                        <span class="material-icons">person</span>
-                    </div>
+                    <?php if (!empty($profilePicture) && file_exists("../uploads/" . $profilePicture)): ?>
+                        <img src="../uploads/<?php echo $profilePicture; ?>" class="w-10 h-10 rounded-full object-cover">
+                    <?php else: ?>
+                        <div class="w-10 h-10 rounded-full bg-purple-500 flex items-center justify-center">
+                            <span class="material-icons">person</span>
+                        </div>
+                    <?php endif; ?>
                     <div class="flex-1">
                         <p class="font-medium"><?php echo $_SESSION['username']; ?></p>
                         <p class="text-xs text-purple-300">Kasir</p>
@@ -163,13 +182,12 @@ $recentTransactionsResult = mysqli_query($conn, $recentTransactionsQuery);
                     <div class="flex items-center space-x-4">
                         <form method="GET" action="" class="relative">
                             <span class="material-icons absolute left-3 top-1/2 transform -translate-y-1/2 text-purple-300">search</span>
-                            <input 
-                                type="text" 
-                                name="search" 
-                                placeholder="Cari transaksi..." 
+                            <input
+                                type="text"
+                                name="search"
+                                placeholder="Cari transaksi..."
                                 value="<?php echo htmlspecialchars($searchKeyword); ?>"
-                                class="bg-[#2A2540] pl-10 pr-4 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 w-64"
-                            >
+                                class="bg-[#2A2540] pl-10 pr-4 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 w-64">
                         </form>
                         <a href="transaksi.php" class="bg-purple-500 hover:bg-purple-600 text-white px-4 py-2 rounded-lg flex items-center space-x-2 transition">
                             <span class="material-icons">add</span>
@@ -177,7 +195,7 @@ $recentTransactionsResult = mysqli_query($conn, $recentTransactionsQuery);
                         </a>
                     </div>
                 </div>
-                
+
                 <!-- Statistik -->
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
                     <div class="stat-card p-6 rounded-xl">
@@ -194,7 +212,7 @@ $recentTransactionsResult = mysqli_query($conn, $recentTransactionsQuery);
                             <?php echo $salesChange >= 0 ? '+' : ''; ?><?php echo number_format($salesChange, 2); ?>% dari kemarin
                         </p>
                     </div>
-                    
+
                     <div class="stat-card p-6 rounded-xl">
                         <div class="flex items-center justify-between">
                             <div>
@@ -207,7 +225,7 @@ $recentTransactionsResult = mysqli_query($conn, $recentTransactionsQuery);
                         </div>
                         <p class="text-xs text-green-400 mt-2">Hari ini</p>
                     </div>
-                    
+
                     <div class="stat-card p-6 rounded-xl">
                         <div class="flex items-center justify-between">
                             <div>
@@ -248,23 +266,23 @@ $recentTransactionsResult = mysqli_query($conn, $recentTransactionsQuery);
                             </thead>
                             <tbody class="divide-y divide-gray-700">
                                 <?php if (mysqli_num_rows($recentTransactionsResult) > 0): ?>
-                                    <?php while($transaction = mysqli_fetch_assoc($recentTransactionsResult)): ?>
-                                    <tr class="table-row">
-                                        <td class="py-4 px-4">#TRX-<?php echo $transaction['id']; ?></td>
-                                        <td class="py-4 px-4"><?php echo date('d M Y, H:i', strtotime($transaction['date'])); ?></td>
-                                        <td class="py-4 px-4 font-medium">Rp <?php echo number_format($transaction['total_price'], 0, ',', '.'); ?></td>
-                                        <td class="py-4 px-4">
-                                            <span class="px-2 py-1 <?php echo $transaction['payment_method'] == 'tunai' ? 'bg-green-900 bg-opacity-30 text-green-400' : 'bg-blue-900 bg-opacity-30 text-blue-400'; ?> rounded-full text-xs">
-                                                <?php echo ucfirst($transaction['payment_method']); ?>
-                                            </span>
-                                        </td>
-                                        <td class="py-4 px-4"><?php echo $transaction['username']; ?></td>
-                                        <td class="py-4 px-4 text-right">
-                                            <button class="text-purple-400 hover:text-purple-300 transition">
-                                                <span class="material-icons">more_vert</span>
-                                            </button>
-                                        </td>
-                                    </tr>
+                                    <?php while ($transaction = mysqli_fetch_assoc($recentTransactionsResult)): ?>
+                                        <tr class="table-row">
+                                            <td class="py-4 px-4">#TRX-<?php echo $transaction['id']; ?></td>
+                                            <td class="py-4 px-4"><?php echo date('d M Y, H:i', strtotime($transaction['date'])); ?></td>
+                                            <td class="py-4 px-4 font-medium">Rp <?php echo number_format($transaction['total_price'], 0, ',', '.'); ?></td>
+                                            <td class="py-4 px-4">
+                                                <span class="px-2 py-1 <?php echo $transaction['payment_method'] == 'tunai' ? 'bg-green-900 bg-opacity-30 text-green-400' : 'bg-blue-900 bg-opacity-30 text-blue-400'; ?> rounded-full text-xs">
+                                                    <?php echo ucfirst($transaction['payment_method']); ?>
+                                                </span>
+                                            </td>
+                                            <td class="py-4 px-4"><?php echo $transaction['username']; ?></td>
+                                            <td class="py-4 px-4 text-right">
+                                                <button class="text-purple-400 hover:text-purple-300 transition">
+                                                    <span class="material-icons">more_vert</span>
+                                                </button>
+                                            </td>
+                                        </tr>
                                     <?php endwhile; ?>
                                 <?php else: ?>
                                     <tr>
@@ -284,4 +302,5 @@ $recentTransactionsResult = mysqli_query($conn, $recentTransactionsQuery);
     <!-- Google Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 </body>
+
 </html>

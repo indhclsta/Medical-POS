@@ -80,7 +80,11 @@ if ($editMode) {
         exit();
     }
 }
-
+$userId = $_SESSION['id'];
+$userQuery = "SELECT username, image FROM admin WHERE id = $userId";
+$userResult = mysqli_query($conn, $userQuery);
+$userData = mysqli_fetch_assoc($userResult);
+$profilePicture = $userData['image'] ?? 'default.jpg';
 // Get form data from session if exists
 if (isset($_SESSION['form_data'])) {
     $formData = array_merge($formData, $_SESSION['form_data']);
@@ -216,13 +220,17 @@ if (isset($_SESSION['error'])) {
             </nav>
 
             <!-- User & Logout -->
-            <div class="mt-auto">
+           <div class="mt-auto">
                 <div class="flex items-center p-3 space-x-3 rounded-lg bg-[#3B3360]">
-                    <div class="w-10 h-10 rounded-full bg-purple-500 flex items-center justify-center">
-                        <span class="material-icons">person</span>
-                    </div>
+                    <?php if (!empty($profilePicture) && file_exists("../uploads/" . $profilePicture)): ?>
+                        <img src="../uploads/<?php echo $profilePicture; ?>" class="w-10 h-10 rounded-full object-cover">
+                    <?php else: ?>
+                        <div class="w-10 h-10 rounded-full bg-purple-500 flex items-center justify-center">
+                            <span class="material-icons">person</span>
+                        </div>
+                    <?php endif; ?>
                     <div class="flex-1">
-                        <p class="font-medium"><?php echo htmlspecialchars($username); ?></p>
+                        <p class="font-medium"><?php echo $_SESSION['username']; ?></p>
                         <p class="text-xs text-purple-300">Kasir</p>
                     </div>
                     <a href="../service/logout.php" class="text-red-400 hover:text-red-300 transition">

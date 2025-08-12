@@ -69,7 +69,7 @@ if ($editMode) {
     $stmt->bind_param("i", $id);
     $stmt->execute();
     $result = $stmt->get_result();
-    
+
     if ($result->num_rows > 0) {
         $formData = array_merge($formData, $result->fetch_assoc());
     } else {
@@ -95,6 +95,7 @@ if (isset($_SESSION['error'])) {
 ?>
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -106,39 +107,49 @@ if (isset($_SESSION['error'])) {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             background-color: #f8fafc;
         }
+
         .sidebar {
             background-color: #6b46c1;
             color: white;
         }
+
         .sidebar a:hover {
             background-color: #805ad5;
         }
+
         .stat-card {
             border-left: 4px solid #6b46c1;
         }
+
         .bg-super-admin {
             background-color: #6b46c1;
         }
+
         .text-super-admin {
             color: #6b46c1;
         }
+
         .nav-active {
             background-color: #805ad5;
         }
+
         .badge-active {
             background-color: #dcfce7;
             color: #166534;
         }
+
         .badge-inactive {
             background-color: #fee2e2;
             color: #991b1b;
         }
+
         .form-input:focus {
             border-color: #6b46c1;
             box-shadow: 0 0 0 3px rgba(107, 70, 193, 0.2);
         }
     </style>
 </head>
+
 <body class="bg-gray-50">
     <div class="flex h-screen">
         <!-- Sidebar -->
@@ -148,7 +159,7 @@ if (isset($_SESSION['error'])) {
                     <span class="text-white">Medi</span><span class="text-purple-300">POS</span>
                 </h1>
             </div>
-            
+
             <div class="flex items-center px-4 py-3 mb-6 rounded-lg bg-purple-900">
                 <div class="w-10 h-10 rounded-full bg-purple-700 flex items-center justify-center">
                     <i class="fas fa-user-shield text-white"></i>
@@ -207,9 +218,9 @@ if (isset($_SESSION['error'])) {
                     <div class="flex items-center space-x-4">
                         <span class="text-sm text-gray-500" id="currentDateTime"></span>
                         <div class="relative">
-                            <img src="<?= $image ?>" 
-                                 alt="Profile" 
-                                 class="w-8 h-8 rounded-full border-2 border-purple-500">
+                            <img src="<?= $image ?>"
+                                alt="Profile"
+                                class="w-8 h-8 rounded-full border-2 border-purple-500">
                             <span class="absolute bottom-0 right-0 w-3 h-3 bg-green-500 rounded-full"></span>
                         </div>
                     </div>
@@ -223,9 +234,7 @@ if (isset($_SESSION['error'])) {
                         <h2 class="text-2xl font-bold text-gray-800">Daftar Member</h2>
                         <p class="text-gray-600">Kelola data member untuk sistem loyalty program</p>
                     </div>
-                    <a href="manage_member.php?add=1" class="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg flex items-center">
-                        <i class="fas fa-plus mr-2"></i> Tambah Member
-                    </a>
+                    <!-- Tombol tambah member dihapus -->
                 </div>
 
                 <!-- Success/Error Messages -->
@@ -233,66 +242,13 @@ if (isset($_SESSION['error'])) {
                     <div class="mb-6 p-4 rounded-lg <?= $_SESSION['message_type'] == 'error' ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700' ?>">
                         <?= $_SESSION['message'] ?>
                     </div>
-                    <?php unset($_SESSION['message']); unset($_SESSION['message_type']); ?>
+                    <?php unset($_SESSION['message']);
+                    unset($_SESSION['message_type']); ?>
                 <?php endif; ?>
 
                 <!-- Form Modal -->
-                <?php if (isset($_GET['add']) || $editMode): ?>
-                <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-                    <div class="bg-white rounded-lg shadow-xl w-full max-w-md">
-                        <div class="px-6 py-4 border-b border-gray-200 bg-purple-50">
-                            <h3 class="text-lg font-semibold text-purple-800">
-                                <?= $editMode ? 'Edit Member' : 'Tambah Member Baru' ?>
-                            </h3>
-                        </div>
-                        
-                        <form action="proses_member.php" method="POST" class="p-6">
-                            <input type="hidden" name="id" value="<?= $formData['id'] ?>">
-                            
-                            <div class="mb-4">
-                                <label class="block text-sm font-medium text-gray-700 mb-1">Nama Member</label>
-                                <input type="text" name="name" value="<?= htmlspecialchars($formData['name']) ?>" 
-                                       class="w-full px-3 py-2 border border-gray-300 rounded-md form-input" required>
-                                <?php if (!empty($errors['name'])): ?>
-                                    <p class="text-sm text-red-600 mt-1"><?= $errors['name'] ?></p>
-                                <?php endif; ?>
-                            </div>
-
-                            <div class="mb-4">
-                                <label class="block text-sm font-medium text-gray-700 mb-1">Nomor Telepon</label>
-                                <input type="text" name="phone" value="<?= htmlspecialchars($formData['phone']) ?>" 
-                                       class="w-full px-3 py-2 border border-gray-300 rounded-md form-input" required
-                                       placeholder="Contoh: 081234567890">
-                                <?php if (!empty($errors['phone'])): ?>
-                                    <p class="text-sm text-red-600 mt-1"><?= $errors['phone'] ?></p>
-                                <?php endif; ?>
-                                <?php if (!empty($errors['general'])): ?>
-                                    <p class="text-sm text-red-600 mt-1"><?= $errors['general'] ?></p>
-                                <?php endif; ?>
-                            </div>
-                            
-                            <?php if ($editMode): ?>
-                            <div class="mb-4">
-                                <label class="block text-sm font-medium text-gray-700 mb-1">Status</label>
-                                <select name="status" class="w-full px-3 py-2 border border-gray-300 rounded-md form-input">
-                                    <option value="active" <?= $formData['status'] == 'active' ? 'selected' : '' ?>>Aktif</option>
-                                    <option value="non-active" <?= $formData['status'] == 'non-active' ? 'selected' : '' ?>>Non-Aktif</option>
-                                </select>
-                            </div>
-                            <?php endif; ?>
-
-                            <div class="flex justify-end space-x-3 mt-6">
-                                <button type="submit" name="simpan" class="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-md">
-                                    <i class="fas fa-save mr-2"></i> Simpan
-                                </button>
-                                <a href="manage_member.php" class="bg-gray-200 hover:bg-gray-300 text-gray-800 px-4 py-2 rounded-md">
-                                    Batal
-                                </a>
-                            </div>
-                        </form>
-                    </div>
-                </div>
-                <?php endif; ?>
+                <!-- Form tambah member dihapus dari admin -->
+                <!-- Modal/form tambah member sudah dihapus, endif juga dihapus untuk mencegah error syntax -->
 
                 <!-- Member Table -->
                 <div class="bg-white rounded-lg shadow overflow-hidden">
@@ -311,39 +267,39 @@ if (isset($_SESSION['error'])) {
                             <tbody class="divide-y divide-gray-200">
                                 <?php if (!empty($members)): ?>
                                     <?php foreach ($members as $index => $member): ?>
-                                    <tr class="hover:bg-purple-50">
-                                        <td class="py-4 px-4"><?= $index + 1 ?></td>
-                                        <td class="py-4 px-4 font-medium"><?= htmlspecialchars($member['name']) ?></td>
-                                        <td class="py-4 px-4"><?= htmlspecialchars($member['phone']) ?></td>
-                                        <td class="py-4 px-4 text-center"><?= number_format($member['point']) ?></td>
-                                        <td class="py-4 px-4 text-center">
-                                            <span class="inline-block px-3 py-1 rounded-full text-xs <?= $member['status'] == 'active' ? 'badge-active' : 'badge-inactive' ?>">
-                                                <?= ucfirst($member['status']) ?>
-                                            </span>
-                                        </td>
-                                        <td class="py-4 px-4 text-center space-x-2">
-                                            <a href="manage_member.php?edit=<?= $member['id'] ?>" class="inline-block text-purple-600 hover:text-purple-800" title="Edit">
-                                                <i class="fas fa-edit"></i>
-                                            </a>
-                                            <form action="proses_member.php" method="POST" class="inline" onsubmit="return confirm('Apakah Anda yakin ingin menghapus member ini?')">
-                                                <input type="hidden" name="id" value="<?= $member['id'] ?>">
-                                                <button type="submit" name="hapus" 
+                                        <tr class="hover:bg-purple-50">
+                                            <td class="py-4 px-4"><?= $index + 1 ?></td>
+                                            <td class="py-4 px-4 font-medium"><?= htmlspecialchars($member['name']) ?></td>
+                                            <td class="py-4 px-4"><?= htmlspecialchars($member['phone']) ?></td>
+                                            <td class="py-4 px-4 text-center"><?= number_format($member['point']) ?></td>
+                                            <td class="py-4 px-4 text-center">
+                                                <span class="inline-block px-3 py-1 rounded-full text-xs <?= $member['status'] == 'active' ? 'badge-active' : 'badge-inactive' ?>">
+                                                    <?= ucfirst($member['status']) ?>
+                                                </span>
+                                            </td>
+                                            <td class="py-4 px-4 text-center space-x-2">
+                                                <a href="manage_member.php?edit=<?= $member['id'] ?>" class="inline-block text-purple-600 hover:text-purple-800" title="Edit">
+                                                    <i class="fas fa-edit"></i>
+                                                </a>
+                                                <form action="proses_member.php" method="POST" class="inline" onsubmit="return confirm('Apakah Anda yakin ingin menghapus member ini?')">
+                                                    <input type="hidden" name="id" value="<?= $member['id'] ?>">
+                                                    <button type="submit" name="hapus"
                                                         class="text-red-600 hover:text-red-800 <?= $member['status'] == 'active' ? 'opacity-50 cursor-not-allowed' : '' ?>"
                                                         title="Hapus"
                                                         <?= $member['status'] == 'active' ? 'disabled' : '' ?>>
-                                                    <i class="fas fa-trash-alt"></i>
-                                                </button>
-                                            </form>
-                                            <?php if($member['status'] == 'non-active'): ?>
-                                            <form action="proses_member.php" method="POST" class="inline">
-                                                <input type="hidden" name="id" value="<?= $member['id'] ?>">
-                                                <button type="submit" name="activate" class="text-blue-600 hover:text-blue-800" title="Aktifkan">
-                                                    <i class="fas fa-sync-alt"></i>
-                                                </button>
-                                            </form>
-                                            <?php endif; ?>
-                                        </td>
-                                    </tr>
+                                                        <i class="fas fa-trash-alt"></i>
+                                                    </button>
+                                                </form>
+                                                <?php if ($member['status'] == 'non-active'): ?>
+                                                    <form action="proses_member.php" method="POST" class="inline">
+                                                        <input type="hidden" name="id" value="<?= $member['id'] ?>">
+                                                        <button type="submit" name="activate" class="text-blue-600 hover:text-blue-800" title="Aktifkan">
+                                                            <i class="fas fa-sync-alt"></i>
+                                                        </button>
+                                                    </form>
+                                                <?php endif; ?>
+                                            </td>
+                                        </tr>
                                     <?php endforeach; ?>
                                 <?php else: ?>
                                     <tr>
@@ -365,17 +321,17 @@ if (isset($_SESSION['error'])) {
         // Update date and time
         function updateDateTime() {
             const now = new Date();
-            const options = { 
-                weekday: 'long', 
-                year: 'numeric', 
-                month: 'long', 
+            const options = {
+                weekday: 'long',
+                year: 'numeric',
+                month: 'long',
                 day: 'numeric',
                 hour: '2-digit',
                 minute: '2-digit'
             };
             document.getElementById('currentDateTime').textContent = now.toLocaleDateString('id-ID', options);
         }
-        
+
         setInterval(updateDateTime, 1000);
         updateDateTime();
 
@@ -388,4 +344,5 @@ if (isset($_SESSION['error'])) {
         });
     </script>
 </body>
+
 </html>

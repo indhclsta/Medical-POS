@@ -446,6 +446,7 @@ if (isset($_SESSION['error'])) {
                         <table class="min-w-full divide-y divide-gray-200">
                             <thead class="bg-purple-600 text-white">
                                 <tr>
+                                    <th class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider">No</th>
                                     <th class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider">Gambar</th>
                                     <th class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider">Produk</th>
                                     <th class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider">Kategori</th>
@@ -458,6 +459,7 @@ if (isset($_SESSION['error'])) {
                             </thead>
                             <tbody class="bg-white divide-y divide-gray-200">
                                 <?php if ($resultProduk && mysqli_num_rows($resultProduk) > 0): ?>
+                                    <?php $no = $offset + 1; ?>
                                     <?php while ($row = mysqli_fetch_assoc($resultProduk)): ?>
                                         <?php
                                         $expiryClass = '';
@@ -478,6 +480,8 @@ if (isset($_SESSION['error'])) {
                                         }
                                         ?>
                                         <tr class="hover:bg-purple-50 transition-colors">
+                                            <!-- No Column -->
+                                            <td class="px-4 py-3 text-left font-semibold text-gray-700"><?= $no++ ?></td>
                                             <!-- Image Column -->
                                             <td class="px-4 py-3 whitespace-nowrap">
                                                 <?php

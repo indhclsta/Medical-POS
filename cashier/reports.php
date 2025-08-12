@@ -29,39 +29,42 @@ $report_type = isset($_GET['report_type']) ? $_GET['report_type'] : 'keseluruhan
 $chart_type = isset($_GET['chart_type']) ? $_GET['chart_type'] : 'daily';
 
 // Query for transaction data
+// Filter hanya transaksi kasir yang sedang login
 $query = "SELECT t.*, a.username as admin_name, m.name as member_name 
           FROM transactions t
           LEFT JOIN admin a ON t.fid_admin = a.id
-          LEFT JOIN member m ON t.fid_member = m.id";
+          LEFT JOIN member m ON t.fid_member = m.id
+          WHERE t.fid_admin = '" . $admin['id'] . "'";
 
 // Add date filter if selected
 if ($report_type == 'periode' && !empty($start_date) && !empty($end_date)) {
-    $query .= " WHERE DATE(t.date) BETWEEN '$start_date' AND '$end_date'";
+    $query .= " AND DATE(t.date) BETWEEN '$start_date' AND '$end_date'";
 }
 
 $query .= " ORDER BY t.date DESC";
 $transactions = mysqli_query($conn, $query);
 
 // Calculate total income
-$total_query = "SELECT SUM(total_price) as total_income FROM transactions";
+// Rekap hanya transaksi kasir yang sedang login
+$total_query = "SELECT SUM(total_price) as total_income FROM transactions WHERE fid_admin = '" . $admin['id'] . "'";
 if ($report_type == 'periode' && !empty($start_date)) {
-    $total_query .= " WHERE DATE(date) BETWEEN '$start_date' AND '$end_date'";
+    $total_query .= " AND DATE(date) BETWEEN '$start_date' AND '$end_date'";
 }
 $total_result = mysqli_query($conn, $total_query);
 $total_income = mysqli_fetch_assoc($total_result)['total_income'];
 
 // Calculate total margin
-$margin_query = "SELECT SUM(margin_total) as total_margin FROM transactions";
+$margin_query = "SELECT SUM(margin_total) as total_margin FROM transactions WHERE fid_admin = '" . $admin['id'] . "'";
 if ($report_type == 'periode' && !empty($start_date)) {
-    $margin_query .= " WHERE DATE(date) BETWEEN '$start_date' AND '$end_date'";
+    $margin_query .= " AND DATE(date) BETWEEN '$start_date' AND '$end_date'";
 }
 $margin_result = mysqli_query($conn, $margin_query);
 $total_margin = mysqli_fetch_assoc($margin_result)['total_margin'];
 
 // Calculate transaction count
-$count_query = "SELECT COUNT(*) as total_transactions FROM transactions";
+$count_query = "SELECT COUNT(*) as total_transactions FROM transactions WHERE fid_admin = '" . $admin['id'] . "'";
 if ($report_type == 'periode' && !empty($start_date)) {
-    $count_query .= " WHERE DATE(date) BETWEEN '$start_date' AND '$end_date'";
+    $count_query .= " AND DATE(date) BETWEEN '$start_date' AND '$end_date'";
 }
 $count_result = mysqli_query($conn, $count_query);
 $total_transactions = mysqli_fetch_assoc($count_result)['total_transactions'];
@@ -74,29 +77,33 @@ $chart_margin_data = [];
 if ($chart_type == 'daily') {
     // Daily sales data
     $chart_query = "SELECT DATE(date) as day, SUM(total_price) as total, SUM(margin_total) as margin 
-                   FROM transactions";
+                   FROM transactions WHERE fid_admin = '" . $admin['id'] . "'";
     if ($report_type == 'periode' && !empty($start_date)) {
-        $chart_query .= " WHERE DATE(date) BETWEEN '$start_date' AND '$end_date'";
+        $chart_query .= " AND DATE(date) BETWEEN '$start_date' AND '$end_date'";
     }
     $chart_query .= " GROUP BY DATE(date) ORDER BY DATE(date)";
 } elseif ($chart_type == 'monthly') {
     // Monthly sales data
     $chart_query = "SELECT DATE_FORMAT(date, '%Y-%m') as month, SUM(total_price) as total, SUM(margin_total) as margin 
-                   FROM transactions";
+                   FROM transactions WHERE fid_admin = '" . $admin['id'] . "'";
     if ($report_type == 'periode' && !empty($start_date)) {
-        $chart_query .= " WHERE DATE(date) BETWEEN '$start_date' AND '$end_date'";
+        $chart_query .= " AND DATE(date) BETWEEN '$start_date' AND '$end_date'";
     }
     $chart_query .= " GROUP BY DATE_FORMAT(date, '%Y-%m') ORDER BY DATE_FORMAT(date, '%Y-%m')";
 } else {
     // Weekly sales data
     $chart_query = "SELECT YEARWEEK(date) as week, SUM(total_price) as total, SUM(margin_total) as margin 
-                   FROM transactions";
+                   FROM transactions WHERE fid_admin = '" . $admin['id'] . "'";
     if ($report_type == 'periode' && !empty($start_date)) {
-        $chart_query .= " WHERE DATE(date) BETWEEN '$start_date' AND '$end_date'";
+        $chart_query .= " AND DATE(date) BETWEEN '$start_date' AND '$end_date'";
     }
     $chart_query .= " GROUP BY YEARWEEK(date) ORDER BY YEARWEEK(date)";
 }
-
+$userId = $_SESSION['id'];
+$userQuery = "SELECT username, image FROM admin WHERE id = $userId";
+$userResult = mysqli_query($conn, $userQuery);
+$userData = mysqli_fetch_assoc($userResult);
+$profilePicture = $userData['image'] ?? 'default.jpg';
 $chart_result = mysqli_query($conn, $chart_query);
 while ($row = mysqli_fetch_assoc($chart_result)) {
     if ($chart_type == 'daily') {
@@ -282,13 +289,17 @@ while ($row = mysqli_fetch_assoc($chart_result)) {
             </nav>
 
             <!-- User & Logout -->
-            <div class="mt-auto">
+             <div class="mt-auto">
                 <div class="flex items-center p-3 space-x-3 rounded-lg bg-[#3B3360]">
-                    <div class="w-10 h-10 rounded-full bg-purple-500 flex items-center justify-center">
-                        <span class="material-icons">person</span>
-                    </div>
+                    <?php if (!empty($profilePicture) && file_exists("../uploads/" . $profilePicture)): ?>
+                        <img src="../uploads/<?php echo $profilePicture; ?>" class="w-10 h-10 rounded-full object-cover">
+                    <?php else: ?>
+                        <div class="w-10 h-10 rounded-full bg-purple-500 flex items-center justify-center">
+                            <span class="material-icons">person</span>
+                        </div>
+                    <?php endif; ?>
                     <div class="flex-1">
-                        <p class="font-medium"><?php echo htmlspecialchars($username); ?></p>
+                        <p class="font-medium"><?php echo $_SESSION['username']; ?></p>
                         <p class="text-xs text-purple-300">Kasir</p>
                     </div>
                     <a href="../service/logout.php" class="text-red-400 hover:text-red-300 transition">
@@ -308,10 +319,7 @@ while ($row = mysqli_fetch_assoc($chart_result)) {
                         <p class="text-purple-300">Analisis penjualan dan transaksi</p>
                     </div>
                     <div class="flex items-center space-x-4">
-                        <div class="relative">
-                            <span class="material-icons absolute left-3 top-1/2 transform -translate-y-1/2 text-purple-300">search</span>
-                            <input type="text" placeholder="Cari..." class="bg-[#2A2540] pl-10 pr-4 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500">
-                        </div>
+                        
                     </div>
                 </div>
 
@@ -509,13 +517,16 @@ while ($row = mysqli_fetch_assoc($chart_result)) {
 
                 <!-- Transaction Table -->
                 <div class="bg-[#2A2540] rounded-xl shadow-lg overflow-hidden">
-                    <div class="px-6 py-4 border-b border-[#3B3360] flex justify-between items-center no-print">
-                        <h3 class="font-semibold text-lg text-white">Daftar Transaksi</h3>
-                        <div class="flex space-x-2 items-center">
-                            <div class="relative mr-2">
-                                <span class="material-icons absolute left-3 top-1/2 transform -translate-y-1/2 text-purple-300">search</span>
-                                <input type="text" id="searchTransaksi" placeholder="Cari transaksi..." class="bg-[#2A2540] pl-10 pr-4 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 text-white" style="min-width:180px;">
-                            </div>
+                   <div class="px-6 py-4 border-b border-[#3B3360] flex justify-between items-center no-print">
+    <h3 class="font-semibold text-lg text-white">Daftar Transaksi</h3>
+    <div class="flex space-x-2 items-center">
+        <div class="relative mr-2">
+            <span class="material-icons absolute left-3 top-1/2 transform -translate-y-1/2 text-purple-300">search</span>
+            <input type="text" id="searchTransaksi" placeholder="Cari transaksi..." 
+                   class="bg-[#2A2540] pl-10 pr-4 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 text-white" 
+                   style="min-width:180px;">
+        </div>
+</div>
                             <button onclick="preparePrint()" class="bg-purple-500 hover:bg-purple-600 text-white px-3 py-1 rounded-lg text-sm flex items-center space-x-1 transition">
                                 <span class="material-icons text-sm">print</span>
                                 <span>Cetak</span>
@@ -608,35 +619,35 @@ while ($row = mysqli_fetch_assoc($chart_result)) {
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 
     <script>
-        // Fitur search transaksi
-        document.addEventListener('DOMContentLoaded', function() {
-            const searchInput = document.getElementById('searchTransaksi');
-            if (searchInput) {
-                searchInput.addEventListener('input', function() {
-                    const keyword = this.value.toLowerCase();
-                    document.querySelectorAll('.transaksi-row').forEach(function(row) {
-                        const id = row.querySelector('.transaksi-id').textContent.toLowerCase();
-                        const date = row.querySelector('.transaksi-date').textContent.toLowerCase();
-                        const admin = row.querySelector('.transaksi-admin').textContent.toLowerCase();
-                        const member = row.querySelector('.transaksi-member').textContent.toLowerCase();
-                        const total = row.querySelector('.transaksi-total').textContent.toLowerCase();
-                        const method = row.querySelector('.transaksi-method').textContent.toLowerCase();
-                        if (
-                            id.includes(keyword) ||
-                            date.includes(keyword) ||
-                            admin.includes(keyword) ||
-                            member.includes(keyword) ||
-                            total.includes(keyword) ||
-                            method.includes(keyword)
-                        ) {
-                            row.style.display = '';
-                        } else {
-                            row.style.display = 'none';
-                        }
-                    });
-                });
-            }
+      // Fitur search transaksi
+document.addEventListener('DOMContentLoaded', function() {
+    const searchInput = document.getElementById('searchTransaksi');
+    if (searchInput) {
+        searchInput.addEventListener('input', function() {
+            const keyword = this.value.toLowerCase();
+            document.querySelectorAll('.transaksi-row').forEach(function(row) {
+                const id = row.querySelector('.transaksi-id').textContent.toLowerCase();
+                const date = row.querySelector('.transaksi-date').textContent.toLowerCase();
+                const admin = row.querySelector('.transaksi-admin').textContent.toLowerCase();
+                const member = row.querySelector('.transaksi-member').textContent.toLowerCase();
+                const total = row.querySelector('.transaksi-total').textContent.toLowerCase();
+                const method = row.querySelector('.transaksi-method').textContent.toLowerCase();
+                if (
+                    id.includes(keyword) ||
+                    date.includes(keyword) ||
+                    admin.includes(keyword) ||
+                    member.includes(keyword) ||
+                    total.includes(keyword) ||
+                    method.includes(keyword))
+                {
+                    row.style.display = '';
+                } else {
+                    row.style.display = 'none';
+                }
+            });
         });
+    }
+});
         // Show/hide date range based on report type
         document.getElementById('report-type').addEventListener('change', function() {
             const dateRangeFields = document.getElementById('dateRangeFields');
