@@ -80,11 +80,7 @@ if ($editMode) {
         exit();
     }
 }
-$userId = $_SESSION['id'];
-$userQuery = "SELECT username, image FROM admin WHERE id = $userId";
-$userResult = mysqli_query($conn, $userQuery);
-$userData = mysqli_fetch_assoc($userResult);
-$profilePicture = $userData['image'] ?? 'default.jpg';
+
 // Get form data from session if exists
 if (isset($_SESSION['form_data'])) {
     $formData = array_merge($formData, $_SESSION['form_data']);
@@ -99,163 +95,146 @@ if (isset($_SESSION['error'])) {
 ?>
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Kelola Member - MediPOS</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
     <style>
         body {
-            background-color: #1E1B2E;
-            font-family: 'Inter', sans-serif;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f8fafc;
         }
-
         .sidebar {
-            background: linear-gradient(180deg, #2A2540 0%, #1E1B2E 100%);
-            border-right: 1px solid #3B3360;
-        }
-
-        .nav-item {
-            transition: all 0.2s ease;
-            border-radius: 0.5rem;
-        }
-
-        .nav-item:hover {
-            background-color: rgba(155, 135, 245, 0.1);
-        }
-
-        .nav-item.active {
-            background-color: #9B87F5;
+            background-color: #6b46c1;
             color: white;
         }
-
-        .nav-item.active:hover {
-            background-color: #8A75E5;
+        .sidebar a:hover {
+            background-color: #805ad5;
         }
-
         .stat-card {
-            background: linear-gradient(135deg, #2A2540 0%, #3B3360 100%);
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-            transition: transform 0.3s ease;
+            border-left: 4px solid #6b46c1;
         }
-
-        .stat-card:hover {
-            transform: translateY(-2px);
+        .bg-cashier {
+            background-color: #6b46c1;
         }
-
-        .table-row:hover {
-            background-color: rgba(155, 135, 245, 0.05);
+        .text-cashier {
+            color: #6b46c1;
         }
-
+        .nav-active {
+            background-color: #805ad5;
+        }
         .badge-active {
-            background-color: rgba(74, 222, 128, 0.1);
-            color: #4ADE80;
+            background-color: #dcfce7;
+            color: #16a34a;
         }
-
         .badge-inactive {
-            background-color: rgba(248, 113, 113, 0.1);
-            color: #F87171;
+            background-color: #fee2e2;
+            color: #dc2626;
         }
-
         .form-input {
-            background-color: #2A2540;
-            border: 1px solid #3B3360;
-            color: white;
+            background-color: white;
+            border: 1px solid #d1d5db;
+            color: #111827;
             border-radius: 0.375rem;
             padding: 0.5rem 0.75rem;
             width: 100%;
         }
-
         .form-input:focus {
             outline: none;
-            border-color: #9B87F5;
-            box-shadow: 0 0 0 3px rgba(155, 135, 245, 0.2);
+            border-color: #8b5cf6;
+            box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.2);
         }
-
         .modal-content {
-            background-color: #2A2540;
-            border: 1px solid #3B3360;
+            background-color: white;
+            border: 1px solid #e5e7eb;
         }
-
         .modal-header {
-            border-bottom: 1px solid #3B3360;
-            background-color: #3B3360;
+            border-bottom: 1px solid #e5e7eb;
+            background-color: #f9fafb;
+        }
+        .table-row:hover {
+            background-color: #f5f3ff;
         }
     </style>
 </head>
-
-<body class="text-gray-200">
-    <div class="flex h-screen overflow-hidden">
+<body class="bg-gray-50">
+    <div class="flex h-screen">
         <!-- Sidebar -->
-        <aside class="sidebar w-64 flex flex-col p-5 space-y-8">
-            <!-- Logo -->
-            <div class="flex items-center space-x-3">
-                <div class="w-9 h-9 rounded-lg bg-purple-500 flex items-center justify-center">
-                    <span class="material-icons text-white">local_pharmacy</span>
+        <div class="sidebar w-64 px-4 py-8 shadow-lg fixed h-full">
+            <div class="flex items-center justify-center mb-8">
+                <h1 class="text-2xl font-bold">
+                    <span class="text-white">Medi</span><span class="text-purple-300">POS</span>
+                </h1>
+            </div>
+            
+            <div class="flex items-center px-4 py-3 mb-6 rounded-lg bg-purple-900">
+                <div class="w-10 h-10 rounded-full bg-purple-700 flex items-center justify-center">
+                    <i class="fas fa-user-tie text-white"></i>
                 </div>
-                <h1 class="text-xl font-bold text-purple-300">MediPOS</h1>
+                <div class="ml-3">
+                    <p class="font-medium text-white"><?= htmlspecialchars($username) ?></p>
+                    <p class="text-xs text-purple-200">Kasir</p>
+                </div>
             </div>
 
-            <!-- Navigation -->
-            <nav class="flex-1 flex flex-col space-y-2">
-                <a href="dashboard.php" class="nav-item flex items-center p-3 space-x-3">
-                    <span class="material-icons">dashboard</span>
-                    <span>Dashboard</span>
+            <nav class="mt-8">
+                <a href="dashboard.php" class="flex items-center px-4 py-3 rounded-lg hover:bg-purple-800">
+                    <i class="fas fa-tachometer-alt mr-3"></i>
+                    Dashboard
                 </a>
-                <a href="transaksi.php" class="nav-item flex items-center p-3 space-x-3">
-                    <span class="material-icons">point_of_sale</span>
-                    <span>Transaksi</span>
+                <a href="transaksi.php" class="flex items-center px-4 py-3 rounded-lg hover:bg-purple-800">
+                    <i class="fas fa-cash-register mr-3"></i>
+                    Transaksi
                 </a>
-                <a href="manage_member.php" class="nav-item active flex items-center p-3 space-x-3">
-                    <span class="material-icons">people</span>
-                    <span>Member</span>
+                <a href="manage_member.php" class="flex items-center px-4 py-3 rounded-lg nav-active">
+                    <i class="fas fa-users mr-3"></i>
+                    Kelola Member
                 </a>
-                <a href="reports.php" class="nav-item flex items-center p-3 space-x-3">
-                    <span class="material-icons">insert_chart</span>
-                    <span>Laporan</span>
+                <a href="reports.php" class="flex items-center px-4 py-3 rounded-lg hover:bg-purple-800">
+                    <i class="fas fa-chart-bar mr-3"></i>
+                    Laporan
+                </a>
+                <a href="../service/logout.php" class="flex items-center px-4 py-0 rounded-lg hover:bg-purple-800 mt-5 text-red-200">
+                    <i class="fas fa-sign-out-alt mr-3"></i>
+                    Logout
                 </a>
             </nav>
-
-            <!-- User & Logout -->
-           <div class="mt-auto">
-                <div class="flex items-center p-3 space-x-3 rounded-lg bg-[#3B3360]">
-                    <?php if (!empty($profilePicture) && file_exists("../uploads/" . $profilePicture)): ?>
-                        <img src="../uploads/<?php echo $profilePicture; ?>" class="w-10 h-10 rounded-full object-cover">
-                    <?php else: ?>
-                        <div class="w-10 h-10 rounded-full bg-purple-500 flex items-center justify-center">
-                            <span class="material-icons">person</span>
-                        </div>
-                    <?php endif; ?>
-                    <div class="flex-1">
-                        <p class="font-medium"><?php echo $_SESSION['username']; ?></p>
-                        <p class="text-xs text-purple-300">Kasir</p>
-                    </div>
-                    <a href="../service/logout.php" class="text-red-400 hover:text-red-300 transition">
-                        <span class="material-icons">logout</span>
-                    </a>
-                </div>
-            </div>
-        </aside>
+        </div>
 
         <!-- Main Content -->
-        <main class="flex-1 p-8 overflow-y-auto">
-            <div class="max-w-7xl mx-auto">
-                <!-- Header -->
-                <div class="flex justify-between items-center mb-8">
-                    <div>
-                        <h2 class="text-2xl font-bold text-white">Kelola Member</h2>
-                        <p class="text-purple-300">Kelola data member untuk sistem loyalty program</p>
+        <div class="ml-64 flex-1 overflow-y-auto">
+            <header class="bg-white shadow-sm">
+                <div class="flex justify-between items-center px-6 py-4">
+                    <h2 class="text-xl font-semibold text-gray-800">Kelola Member</h2>
+                    <div class="flex items-center space-x-4">
+                        <span class="text-sm text-gray-500" id="currentDateTime"></span>
+                        <div class="relative">
+                            <a href="profile.php">
+                                <img src="<?= $image ?>" 
+                                     alt="Profile" 
+                                     class="w-8 h-8 rounded-full border-2 border-purple-500 cursor-pointer">
+                                <span class="absolute bottom-0 right-0 w-3 h-3 bg-green-500 rounded-full"></span>
+                            </a>
+                        </div>
                     </div>
+                </div>
+            </header>
+
+            <main class="p-6">
+                <!-- Header with search and add button -->
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-2xl font-bold mb-2 text-gray-800">Daftar Member</h2>
                     <div class="flex items-center space-x-4">
                         <div class="relative">
-                            <span class="material-icons absolute left-3 top-1/2 transform -translate-y-1/2 text-purple-300">search</span>
-                            <input type="text" id="searchMember" placeholder="Cari member..." class="bg-[#2A2540] pl-10 pr-4 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500">
+                            <i class="fas fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
+                            <input type="text" id="searchMember" placeholder="Cari member..." 
+                                   class="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent">
                         </div>
-                        <a href="manage_member.php?add=1" class="bg-purple-500 hover:bg-purple-600 text-white px-4 py-2 rounded-lg flex items-center space-x-2 transition">
-                            <span class="material-icons">add</span>
+                        <a href="manage_member.php?add=1" class="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg flex items-center space-x-2 transition">
+                            <i class="fas fa-plus"></i>
                             <span>Tambah Member</span>
                         </a>
                     </div>
@@ -275,7 +254,7 @@ if (isset($_SESSION['error'])) {
                     <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
                         <div class="modal-content rounded-lg shadow-xl w-full max-w-md">
                             <div class="modal-header px-6 py-4 rounded-t-lg">
-                                <h3 class="text-lg font-semibold text-white">
+                                <h3 class="text-lg font-semibold text-gray-800">
                                     <?= $editMode ? 'Edit Member' : 'Tambah Member Baru' ?>
                                 </h3>
                             </div>
@@ -284,30 +263,30 @@ if (isset($_SESSION['error'])) {
                                 <input type="hidden" name="id" value="<?= $formData['id'] ?>">
 
                                 <div class="mb-4">
-                                    <label class="block text-sm font-medium text-purple-300 mb-1">Nama Member</label>
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">Nama Member</label>
                                     <input type="text" name="name" value="<?= htmlspecialchars($formData['name']) ?>"
                                         class="form-input" required>
                                     <?php if (!empty($errors['name'])): ?>
-                                        <p class="text-sm text-red-400 mt-1"><?= $errors['name'] ?></p>
+                                        <p class="text-sm text-red-500 mt-1"><?= $errors['name'] ?></p>
                                     <?php endif; ?>
                                 </div>
 
                                 <div class="mb-4">
-                                    <label class="block text-sm font-medium text-purple-300 mb-1">Nomor Telepon</label>
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">Nomor Telepon</label>
                                     <input type="text" name="phone" value="<?= htmlspecialchars($formData['phone']) ?>"
                                         class="form-input" required
                                         placeholder="Contoh: 081234567890">
                                     <?php if (!empty($errors['phone'])): ?>
-                                        <p class="text-sm text-red-400 mt-1"><?= $errors['phone'] ?></p>
+                                        <p class="text-sm text-red-500 mt-1"><?= $errors['phone'] ?></p>
                                     <?php endif; ?>
                                     <?php if (!empty($errors['general'])): ?>
-                                        <p class="text-sm text-red-400 mt-1"><?= $errors['general'] ?></p>
+                                        <p class="text-sm text-red-500 mt-1"><?= $errors['general'] ?></p>
                                     <?php endif; ?>
                                 </div>
 
                                 <?php if ($editMode): ?>
                                     <div class="mb-4">
-                                        <label class="block text-sm font-medium text-purple-300 mb-1">Status</label>
+                                        <label class="block text-sm font-medium text-gray-700 mb-1">Status</label>
                                         <select name="status" class="form-input">
                                             <option value="active" <?= $formData['status'] == 'active' ? 'selected' : '' ?>>Aktif</option>
                                             <option value="non-active" <?= $formData['status'] == 'non-active' ? 'selected' : '' ?>>Non-Aktif</option>
@@ -316,11 +295,11 @@ if (isset($_SESSION['error'])) {
                                 <?php endif; ?>
 
                                 <div class="flex justify-end space-x-3 mt-6">
-                                    <button type="submit" name="simpan" class="bg-purple-500 hover:bg-purple-600 text-white px-4 py-2 rounded-lg flex items-center space-x-2 transition">
-                                        <span class="material-icons">save</span>
+                                    <button type="submit" name="simpan" class="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg flex items-center space-x-2 transition">
+                                        <i class="fas fa-save"></i>
                                         <span>Simpan</span>
                                     </button>
-                                    <a href="manage_member.php" class="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-lg transition">
+                                    <a href="manage_member.php" class="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-lg transition">
                                         Batal
                                     </a>
                                 </div>
@@ -330,10 +309,10 @@ if (isset($_SESSION['error'])) {
                 <?php endif; ?>
 
                 <!-- Member Table -->
-                <div class="bg-[#2A2540] rounded-xl shadow-lg overflow-hidden">
+                <div class="bg-white rounded-xl shadow-md overflow-hidden">
                     <div class="overflow-x-auto">
                         <table class="w-full">
-                            <thead class="bg-[#3B3360] text-purple-300">
+                            <thead class="bg-purple-50 text-purple-800">
                                 <tr>
                                     <th class="py-3 px-4 text-left">No</th>
                                     <th class="py-3 px-4 text-left">Nama</th>
@@ -343,10 +322,10 @@ if (isset($_SESSION['error'])) {
                                     <th class="py-3 px-4 text-center">Aksi</th>
                                 </tr>
                             </thead>
-                            <tbody class="divide-y divide-[#3B3360]">
+                            <tbody class="divide-y divide-gray-200">
                                 <?php if (!empty($members)): ?>
                                     <?php foreach ($members as $index => $member): ?>
-                                        <tr class="hover:bg-[#3B3360] transition member-row">
+                                        <tr class="table-row">
                                             <td class="py-4 px-4"><?= $index + 1 ?></td>
                                             <td class="py-4 px-4 font-medium member-name"><?= htmlspecialchars($member['name']) ?></td>
                                             <td class="py-4 px-4 member-phone"><?= htmlspecialchars($member['phone']) ?></td>
@@ -357,23 +336,23 @@ if (isset($_SESSION['error'])) {
                                                 </span>
                                             </td>
                                             <td class="py-4 px-4 text-center space-x-2">
-                                                <a href="manage_member.php?edit=<?= $member['id'] ?>" class="inline-block text-purple-400 hover:text-purple-300 transition" title="Edit">
-                                                    <span class="material-icons">edit</span>
+                                                <a href="manage_member.php?edit=<?= $member['id'] ?>" class="inline-block text-purple-600 hover:text-purple-800 transition" title="Edit">
+                                                    <i class="fas fa-edit"></i>
                                                 </a>
                                                 <form action="proses_member.php" method="POST" class="inline" onsubmit="return confirm('Apakah Anda yakin ingin menghapus member ini?')">
                                                     <input type="hidden" name="id" value="<?= $member['id'] ?>">
                                                     <button type="submit" name="hapus"
-                                                        class="text-red-400 hover:text-red-300 transition <?= $member['status'] == 'active' ? 'opacity-50 cursor-not-allowed' : '' ?>"
+                                                        class="text-red-600 hover:text-red-800 transition <?= $member['status'] == 'active' ? 'opacity-50 cursor-not-allowed' : '' ?>"
                                                         title="Hapus"
                                                         <?= $member['status'] == 'active' ? 'disabled' : '' ?>>
-                                                        <span class="material-icons">delete</span>
+                                                        <i class="fas fa-trash-alt"></i>
                                                     </button>
                                                 </form>
                                                 <?php if ($member['status'] == 'non-active'): ?>
                                                     <form action="proses_member.php" method="POST" class="inline">
                                                         <input type="hidden" name="id" value="<?= $member['id'] ?>">
-                                                        <button type="submit" name="activate" class="text-blue-400 hover:text-blue-300 transition" title="Aktifkan">
-                                                            <span class="material-icons">refresh</span>
+                                                        <button type="submit" name="activate" class="text-blue-600 hover:text-blue-800 transition" title="Aktifkan">
+                                                            <i class="fas fa-redo-alt"></i>
                                                         </button>
                                                     </form>
                                                 <?php endif; ?>
@@ -383,7 +362,7 @@ if (isset($_SESSION['error'])) {
                                 <?php else: ?>
                                     <tr>
                                         <td colspan="6" class="py-8 text-center text-gray-400">
-                                            <span class="material-icons text-4xl mb-2">people_alt</span>
+                                            <i class="fas fa-users text-4xl mb-2"></i>
                                             <p class="text-lg">Tidak ada data member</p>
                                         </td>
                                     </tr>
@@ -392,8 +371,8 @@ if (isset($_SESSION['error'])) {
                         </table>
                     </div>
                 </div>
-            </div>
-        </main>
+            </main>
+        </div>
     </div>
 
     <script>
@@ -402,7 +381,7 @@ if (isset($_SESSION['error'])) {
             const searchInput = document.getElementById('searchMember');
             searchInput.addEventListener('input', function() {
                 const keyword = this.value.toLowerCase();
-                document.querySelectorAll('.member-row').forEach(function(row) {
+                document.querySelectorAll('.table-row').forEach(function(row) {
                     const name = row.querySelector('.member-name').textContent.toLowerCase();
                     const phone = row.querySelector('.member-phone').textContent.toLowerCase();
                     if (name.includes(keyword) || phone.includes(keyword)) {
@@ -413,20 +392,21 @@ if (isset($_SESSION['error'])) {
                 });
             });
         });
+
         // Update date and time
         function updateDateTime() {
             const now = new Date();
-            const options = {
-                weekday: 'long',
-                year: 'numeric',
-                month: 'long',
+            const options = { 
+                weekday: 'long', 
+                year: 'numeric', 
+                month: 'long', 
                 day: 'numeric',
                 hour: '2-digit',
                 minute: '2-digit'
             };
             document.getElementById('currentDateTime').textContent = now.toLocaleDateString('id-ID', options);
         }
-
+        
         setInterval(updateDateTime, 1000);
         updateDateTime();
 
@@ -439,5 +419,4 @@ if (isset($_SESSION['error'])) {
         });
     </script>
 </body>
-
 </html>

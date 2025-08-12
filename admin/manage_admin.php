@@ -33,6 +33,24 @@ $result = $conn->query($query);
 if (!$result) {
     die("Error: " . $conn->error);
 }
+
+// Fitur search
+$search = isset($_GET['search']) ? trim($_GET['search']) : '';
+if ($search !== '') {
+    $query = "SELECT id, email, username, image, status FROM admin WHERE role = 'cashier' AND (username LIKE ? OR email LIKE ?) ORDER BY username ASC";
+    $stmt = $conn->prepare($query);
+    $search_param = "%$search%";
+    $stmt->bind_param("ss", $search_param, $search_param);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    $stmt->close();
+} else {
+    $query = "SELECT id, email, username, image, status FROM admin WHERE role = 'cashier' ORDER BY username ASC";
+    $result = $conn->query($query);
+    if (!$result) {
+        die("Error: " . $conn->error);
+    }
+}
 ?>
 
 <!DOCTYPE html>
@@ -235,7 +253,7 @@ if (!$result) {
 </head>
 
 <body class="bg-gray-50">
-    <div class="flex h-screen">
+    <div class="flex min-h-screen">
         <!-- Sidebar -->
         <div class="sidebar w-64 px-4 py-8 shadow-lg fixed h-full">
             <div class="flex items-center justify-center mb-8">
@@ -321,6 +339,14 @@ if (!$result) {
                     </button>
                 </div>
 
+                <!-- Search Bar -->
+                <div class="flex w-full max-w-md justify-end mb-6">
+                    <form method="GET" class="flex gap-2 w-full max-w-md justify-end">
+                        <input type="text" name="search" value="<?= htmlspecialchars($search ?? '') ?>" placeholder="Cari username/email kasir..." class="form-input px-3 py-2 rounded border border-gray-300 focus:outline-none focus:ring w-full">
+                        <button type="submit" class="px-4 py-2 bg-purple-600 text-white rounded hover:bg-purple-700"><i class="fas fa-search"></i> Cari</button>
+                    </form>
+                </div>
+
                 <!-- Notifications -->
                 <?php if (isset($_SESSION['success'])): ?>
                     <div class="mb-6 p-4 bg-green-100 border border-green-400 text-green-700 rounded-lg">
@@ -376,10 +402,7 @@ if (!$result) {
                                 <div class="flex flex-wrap justify-center gap-2 w-full">
                                     <button onclick="openEditModal(
                                         '<?= $row['id'] ?>',
-                                        '<?= htmlspecialchars($row['username'], ENT_QUOTES) ?>',
-                                        '<?= htmlspecialchars($row['email'], ENT_QUOTES) ?>',
-                                        '<?= $row['status'] ?>',
-                                        '<?= htmlspecialchars($row['image']) ?>'
+                                        '<?= htmlspecialchars($row['username'], ENT_QUOTES) ?>'
                                     )" class="btn-edit px-3 py-1 rounded text-sm flex items-center">
                                         <i class="fas fa-edit mr-1"></i> Edit
                                     </button>
@@ -454,41 +477,17 @@ if (!$result) {
     <div id="editModal" class="modal">
         <div class="modal-content">
             <div class="modal-header">
-                <h3 class="text-lg font-semibold text-gray-800">Edit Kasir</h3>
+                <h3 class="text-lg font-semibold text-gray-800">Edit Username Kasir</h3>
                 <span class="close-modal" onclick="closeModal('editModal')">&times;</span>
             </div>
-            <form id="editForm" action="process_edit_admin.php" method="POST" enctype="multipart/form-data">
+            <form id="editForm" action="process_edit_admin.php" method="POST">
                 <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?>">
                 <input type="hidden" id="edit_id" name="id">
-                <input type="hidden" name="role" value="cashier">
                 <div class="modal-body space-y-4">
                     <div>
                         <label for="edit_username" class="form-label">Username</label>
                         <input type="text" id="edit_username" name="username" required
                             class="form-input" placeholder="Masukkan username">
-                    </div>
-                    <div>
-                        <label for="edit_email" class="form-label">Email</label>
-                        <input type="email" id="edit_email" name="email" required
-                            class="form-input" placeholder="Masukkan email">
-                    </div>
-                    <div>
-                        <label for="edit_password" class="form-label">Password (Kosongkan jika tidak diubah)</label>
-                        <input type="password" id="edit_password" name="password"
-                            class="form-input" placeholder="Masukkan password baru">
-                    </div>
-                    <div>
-                        <label for="edit_status" class="form-label">Status</label>
-                        <select id="edit_status" name="status" class="form-input">
-                            <option value="active">Aktif</option>
-                            <option value="inactive">Nonaktif</option>
-                        </select>
-                    </div>
-                    <div>
-                        <label for="edit_image" class="form-label">Foto Profil (Kosongkan jika tidak diubah)</label>
-                        <input type="file" id="edit_image" name="image" accept="image/*"
-                            class="form-input">
-                        <div id="current_image" class="mt-2 text-sm text-gray-500"></div>
                     </div>
                 </div>
                 <div class="modal-footer">
@@ -505,6 +504,7 @@ if (!$result) {
         </div>
     </div>
 
+
     <script>
         // Modal Functions
         function openCreateModal() {
@@ -512,27 +512,27 @@ if (!$result) {
             document.getElementById('create_username').focus();
         }
 
-        function openEditModal(id, username, email, status, image) {
+        function openEditModal(id, username) {
             document.getElementById('edit_id').value = id;
             document.getElementById('edit_username').value = username;
-            document.getElementById('edit_email').value = email;
-            document.getElementById('edit_status').value = status;
+            document.getElementById('editModal').style.display = 'flex';
+            document.getElementById('edit_username').focus();
+        }
 
-            // Display current image info
-            const currentImageDiv = document.getElementById('current_image');
-            if (image && image !== 'default.jpg') {
-                currentImageDiv.innerHTML = `
+
+        // Display current image info
+        const currentImageDiv = document.getElementById('current_image');
+        if (image && image !== 'default.jpg') {
+            currentImageDiv.innerHTML = `
                     <span class="font-medium">Foto saat ini:</span>
                     <img src="../uploads/${image}" alt="Current profile" class="w-16 h-16 rounded-full object-cover mt-1">
                     <div class="text-xs mt-1">${image}</div>
                 `;
-            } else {
-                currentImageDiv.innerHTML = '<span class="font-medium">Menggunakan foto default</span>';
-            }
-
-            document.getElementById('editModal').style.display = 'flex';
-            document.getElementById('edit_username').focus();
+        } else {
+            currentImageDiv.innerHTML = '<span class="font-medium">Menggunakan foto default</span>';
         }
+
+
 
         function closeModal(modalId) {
             document.getElementById(modalId).style.display = 'none';

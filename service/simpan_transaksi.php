@@ -96,7 +96,7 @@ try {
     $points_earned = floor($total / 10000);
 
     $stmt->bind_param(
-        "isdiiidis",
+        "idsdddidi",
         $cashier_id,
         $total,
         $payment_method,

@@ -173,10 +173,15 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                 </div>
                 <div class="mb-4">
                     <label for="password" class="block mb-2 text-gray-600">Password</label>
-                    <input type="password" id="password" name="password"
-                        class="w-full px-3 py-2 rounded-lg border border-gray-300 focus:outline-none form-input"
-                        placeholder="Masukkan password"
-                        required>
+                    <div class="relative">
+                        <input type="password" id="password" name="password"
+                            class="w-full px-3 py-2 rounded-lg border border-gray-300 focus:outline-none form-input"
+                            placeholder="Masukkan password"
+                            required>
+                        <span class="absolute inset-y-0 right-3 flex items-center cursor-pointer" onclick="togglePassword()">
+                            <i id="eyeIcon" class="fas fa-eye text-gray-500"></i>
+                        </span>
+                    </div>
                 </div>
                 <div class="text-right mb-6">
                     <a href="forgot.php" class="text-primary text-sm hover:underline">Lupa Password?</a>
@@ -187,6 +192,21 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             </form>
         </div>
     </div>
+<script>
+function togglePassword() {
+    var passwordInput = document.getElementById('password');
+    var eyeIcon = document.getElementById('eyeIcon');
+    if (passwordInput.type === 'password') {
+        passwordInput.type = 'text';
+        eyeIcon.classList.remove('fa-eye');
+        eyeIcon.classList.add('fa-eye-slash');
+    } else {
+        passwordInput.type = 'password';
+        eyeIcon.classList.remove('fa-eye-slash');
+        eyeIcon.classList.add('fa-eye');
+    }
+}
+</script>
 </body>
 
 </html>

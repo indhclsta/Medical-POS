@@ -47,6 +47,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['token'], $_POST['new_p
 
 <!DOCTYPE html>
 <html lang="id">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -55,25 +56,40 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['token'], $_POST['new_p
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;700&family=Poppins:wght@400;700&display=swap" rel="stylesheet">
     <style>
-        .font-outfit { font-family: 'Outfit', sans-serif; }
-        .font-poppins { font-family: 'Poppins', sans-serif; }
-        .bg-custom { background-color: #F3E8FF; }
-        .text-primary { color: #7C3AED; }
+        .font-outfit {
+            font-family: 'Outfit', sans-serif;
+        }
+
+        .font-poppins {
+            font-family: 'Poppins', sans-serif;
+        }
+
+        .bg-custom {
+            background-color: #F3E8FF;
+        }
+
+        .text-primary {
+            color: #7C3AED;
+        }
+
         .btn-primary {
             background-color: #7C3AED;
             transition: all 0.3s ease;
         }
+
         .btn-primary:hover {
             background-color: #6B21A8;
             transform: translateY(-1px);
             box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
         }
+
         .form-input:focus {
             border-color: #7C3AED;
             box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.2);
         }
     </style>
 </head>
+
 <body class="bg-custom font-outfit">
     <div class="flex min-h-screen items-center justify-center p-4">
         <div class="w-full max-w-md bg-white rounded-lg shadow-lg p-8">
@@ -82,7 +98,8 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['token'], $_POST['new_p
 
             <?php if (isset($_SESSION['error'])): ?>
                 <div class="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded">
-                    <?= htmlspecialchars($_SESSION['error']); unset($_SESSION['error']); ?>
+                    <?= htmlspecialchars($_SESSION['error']);
+                    unset($_SESSION['error']); ?>
                 </div>
             <?php endif; ?>
 
@@ -91,16 +108,26 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['token'], $_POST['new_p
 
                 <div class="mb-4">
                     <label for="new_password" class="block mb-2 text-gray-600">Password Baru</label>
-                    <input type="password" id="new_password" name="new_password"
-                           class="w-full px-3 py-2 rounded-lg border border-gray-300 focus:outline-none form-input"
-                           placeholder="Masukkan password baru" required>
+                    <div class="relative">
+                        <input type="password" id="new_password" name="new_password"
+                            class="w-full px-3 py-2 rounded-lg border border-gray-300 focus:outline-none form-input"
+                            placeholder="Masukkan password baru" required>
+                        <span class="absolute inset-y-0 right-3 flex items-center cursor-pointer" onclick="togglePassword('new_password', 'eyeIconNew')">
+                            <i id="eyeIconNew" class="fas fa-eye text-gray-500"></i>
+                        </span>
+                    </div>
                 </div>
 
                 <div class="mb-4">
                     <label for="confirm_password" class="block mb-2 text-gray-600">Konfirmasi Password</label>
-                    <input type="password" id="confirm_password" name="confirm_password"
-                           class="w-full px-3 py-2 rounded-lg border border-gray-300 focus:outline-none form-input"
-                           placeholder="Ulangi password" required>
+                    <div class="relative">
+                        <input type="password" id="confirm_password" name="confirm_password"
+                            class="w-full px-3 py-2 rounded-lg border border-gray-300 focus:outline-none form-input"
+                            placeholder="Ulangi password" required>
+                        <span class="absolute inset-y-0 right-3 flex items-center cursor-pointer" onclick="togglePassword('confirm_password', 'eyeIconConfirm')">
+                            <i id="eyeIconConfirm" class="fas fa-eye text-gray-500"></i>
+                        </span>
+                    </div>
                 </div>
 
                 <button type="submit" class="w-full py-2 rounded-lg btn-primary text-white font-semibold">
@@ -109,5 +136,21 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['token'], $_POST['new_p
             </form>
         </div>
     </div>
+    <script>
+        function togglePassword(inputId, iconId) {
+            var passwordInput = document.getElementById(inputId);
+            var eyeIcon = document.getElementById(iconId);
+            if (passwordInput.type === 'password') {
+                passwordInput.type = 'text';
+                eyeIcon.classList.remove('fa-eye');
+                eyeIcon.classList.add('fa-eye-slash');
+            } else {
+                passwordInput.type = 'password';
+                eyeIcon.classList.remove('fa-eye-slash');
+                eyeIcon.classList.add('fa-eye');
+            }
+        }
+    </script>
 </body>
+
 </html>

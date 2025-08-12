@@ -122,13 +122,13 @@ if (isset($_GET['check_member'])) {
     if ($result->num_rows > 0) {
         $member = $result->fetch_assoc();
         $member_points = $member['point'];
-        $member_status = "<p class='text-green-400 mt-1'>✅ Member terdaftar! (Poin: $member_points)</p>";
+        $member_status = "<p class='text-green-600 mt-1'>✅ Member terdaftar! (Poin: $member_points)</p>";
 
         if ($member_points >= 1000) $discount = 0.15;
         elseif ($member_points >= 500) $discount = 0.10;
         elseif ($member_points >= 200) $discount = 0.05;
     } else {
-        $member_status = "<p class='text-red-400 mt-1'>❌ Nomor tidak terdaftar atau tidak aktif.</p>";
+        $member_status = "<p class='text-red-600 mt-1'>❌ Nomor tidak terdaftar atau tidak aktif.</p>";
     }
 }
 
@@ -139,6 +139,7 @@ $userQuery = "SELECT username, image FROM admin WHERE id = $userId";
 $userResult = mysqli_query($conn, $userQuery);
 $userData = mysqli_fetch_assoc($userResult);
 $profilePicture = $userData['image'] ?? 'default.jpg';
+
 // Format currency
 function format_currency($amount) {
     return 'Rp ' . number_format($amount, 0, ',', '.');
@@ -151,45 +152,34 @@ function format_currency($amount) {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Checkout - MediPOS</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
     <style>
         body {
-            background-color: #1E1B2E;
-            font-family: 'Inter', sans-serif;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f8fafc;
         }
         .sidebar {
-            background: linear-gradient(180deg, #2A2540 0%, #1E1B2E 100%);
-            border-right: 1px solid #3B3360;
-        }
-        .nav-item {
-            transition: all 0.2s ease;
-            border-radius: 0.5rem;
-        }
-        .nav-item:hover {
-            background-color: rgba(155, 135, 245, 0.1);
-        }
-        .nav-item.active {
-            background-color: #9B87F5;
+            background-color: #6b46c1;
             color: white;
         }
-        .nav-item.active:hover {
-            background-color: #8A75E5;
+        .sidebar a:hover {
+            background-color: #805ad5;
         }
         .stat-card {
-            background: linear-gradient(135deg, #2A2540 0%, #3B3360 100%);
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-            transition: transform 0.3s ease;
+            border-left: 4px solid #6b46c1;
         }
-        .stat-card:hover {
-            transform: translateY(-2px);
+        .bg-cashier {
+            background-color: #6b46c1;
         }
-        .table-row:hover {
-            background-color: rgba(155, 135, 245, 0.05);
+        .text-cashier {
+            color: #6b46c1;
+        }
+        .nav-active {
+            background-color: #805ad5;
         }
         .cart-timer {
             background-color: rgba(251, 191, 36, 0.2);
-            color: #FBBF24;
+            color: #d97706;
             padding: 6px 12px;
             border-radius: 20px;
             font-weight: 600;
@@ -199,15 +189,15 @@ function format_currency($amount) {
             font-size: 14px;
         }
         .timer-warning {
-            background-color: rgba(248, 113, 113, 0.2);
-            color: #F87171;
+            background-color: rgba(239, 68, 68, 0.2);
+            color: #dc2626;
         }
         .alert-box {
             position: fixed;
             top: 20px;
             right: 20px;
             padding: 15px 20px;
-            background-color: #9B87F5;
+            background-color: #6b46c1;
             color: white;
             border-radius: 8px;
             box-shadow: 0 4px 12px rgba(0,0,0,0.15);
@@ -226,38 +216,36 @@ function format_currency($amount) {
         }
         .input-money {
             transition: all 0.3s ease;
-            background-color: #2A2540;
-            border: 1px solid #3B3360;
-            color: white;
+            border: 1px solid #d1d5db;
         }
         .input-money:focus {
-            border-color: #9B87F5;
-            box-shadow: 0 0 0 3px rgba(155, 135, 245, 0.2);
+            border-color: #6b46c1;
+            box-shadow: 0 0 0 2px rgba(107, 70, 193, 0.2);
         }
         .valid {
-            border-color: #10B981;
-            background-color: rgba(16, 185, 129, 0.1);
+            border-color: #10b981;
+            background-color: rgba(16, 185, 129, 0.05);
         }
         .invalid {
-            border-color: #EF4444;
-            background-color: rgba(239, 68, 68, 0.1);
+            border-color: #ef4444;
+            background-color: rgba(239, 68, 68, 0.05);
         }
         .cart-item {
             display: flex;
             padding: 12px;
             border-radius: 8px;
-            background-color: #2A2540;
+            background-color: white;
             box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-            border: 1px solid #3B3360;
+            border: 1px solid #e5e7eb;
             margin-bottom: 8px;
         }
         .quantity-control {
             display: flex;
             align-items: center;
-            border: 1px solid #3B3360;
+            border: 1px solid #d1d5db;
             border-radius: 8px;
             overflow: hidden;
-            background-color: #1E1B2E;
+            background-color: white;
         }
         .quantity-btn {
             width: 32px;
@@ -265,108 +253,112 @@ function format_currency($amount) {
             display: flex;
             align-items: center;
             justify-content: center;
-            background-color: #3B3360;
+            background-color: #f3f4f6;
             border: none;
             cursor: pointer;
             transition: background-color 0.2s;
-            color: white;
+            color: #4b5563;
         }
         .quantity-btn:hover {
-            background-color: #4C426F;
+            background-color: #e5e7eb;
         }
         .quantity-input {
             width: 40px;
             text-align: center;
-            border-left: 1px solid #3B3360;
-            border-right: 1px solid #3B3360;
+            border-left: 1px solid #d1d5db;
+            border-right: 1px solid #d1d5db;
             font-weight: 600;
-            background-color: #2A2540;
-            color: white;
+            background-color: white;
+        }
+        .payment-method {
+            border: 1px solid #d1d5db;
+            border-radius: 8px;
+            padding: 12px;
+            margin-bottom: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .payment-method:hover {
+            border-color: #6b46c1;
+        }
+        .payment-method.selected {
+            border-color: #6b46c1;
+            background-color: rgba(107, 70, 193, 0.05);
         }
     </style>
 </head>
-<body class="text-gray-200">
-    <div class="flex h-screen overflow-hidden">
+<body class="bg-gray-50">
+    <div class="flex h-screen">
         <!-- Sidebar -->
-        <aside class="sidebar w-64 flex flex-col p-5 space-y-8">
-            <!-- Logo -->
-            <div class="flex items-center space-x-3">
-                <div class="w-9 h-9 rounded-lg bg-purple-500 flex items-center justify-center">
-                    <span class="material-icons text-white">local_pharmacy</span>
-                </div>
-                <h1 class="text-xl font-bold text-purple-300">MediPOS</h1>
+        <div class="sidebar w-64 px-4 py-8 shadow-lg fixed h-full">
+            <div class="flex items-center justify-center mb-8">
+                <h1 class="text-2xl font-bold">
+                    <span class="text-white">Medi</span><span class="text-purple-300">POS</span>
+                </h1>
             </div>
             
-            <!-- Navigation -->
-            <nav class="flex-1 flex flex-col space-y-2">
-                <a href="dashboard.php" class="nav-item flex items-center p-3 space-x-3">
-                    <span class="material-icons">dashboard</span>
-                    <span>Dashboard</span>
+            <div class="flex items-center px-4 py-3 mb-6 rounded-lg bg-purple-900">
+                <div class="w-10 h-10 rounded-full bg-purple-700 flex items-center justify-center">
+                    <i class="fas fa-user-tie text-white"></i>
+                </div>
+                <div class="ml-3">
+                    <p class="font-medium text-white"><?= htmlspecialchars($userData['username']) ?></p>
+                    <p class="text-xs text-purple-200">Kasir</p>
+                </div>
+            </div>
+
+            <nav class="mt-8">
+                <a href="dashboard.php" class="flex items-center px-4 py-3 rounded-lg">
+                    <i class="fas fa-tachometer-alt mr-3"></i>
+                    Dashboard
                 </a>
-                <a href="transaksi.php" class="nav-item flex items-center p-3 space-x-3">
-                    <span class="material-icons">point_of_sale</span>
-                    <span>Transaksi</span>
+                <a href="transaksi.php" class="flex items-center px-4 py-3 rounded-lg hover:bg-purple-800">
+                    <i class="fas fa-cash-register mr-3"></i>
+                    Transaksi
                 </a>
-                <a href="checkout.php" class="nav-item active flex items-center p-3 space-x-3">
-                    <span class="material-icons">shopping_cart</span>
-                    <span>Checkout</span>
+                <a href="checkout.php" class="flex items-center px-4 py-3 rounded-lg nav-active">
+                    <i class="fas fa-shopping-cart mr-3"></i>
+                    Checkout
                 </a>
-                <a href="manage_member.php" class="nav-item flex items-center p-3 space-x-3">
-                    <span class="material-icons">people</span>
-                    <span>Member</span>
+                <a href="manage_member.php" class="flex items-center px-4 py-3 rounded-lg hover:bg-purple-800">
+                    <i class="fas fa-users mr-3"></i>
+                    Member
                 </a>
-                <a href="reports.php" class="nav-item flex items-center p-3 space-x-3">
-                    <span class="material-icons">insert_chart</span>
-                    <span>Laporan</span>
+                <a href="reports.php" class="flex items-center px-4 py-3 rounded-lg hover:bg-purple-800">
+                    <i class="fas fa-chart-bar mr-3"></i>
+                    Laporan
+                </a>
+                <a href="../service/logout.php" class="flex items-center px-4 py-0 rounded-lg hover:bg-purple-800 mt-5 text-red-200">
+                    <i class="fas fa-sign-out-alt mr-3"></i>
+                    Logout
                 </a>
             </nav>
-            
-            <!-- User & Logout -->
-            <div class="mt-auto">
-                <div class="flex items-center p-3 space-x-3 rounded-lg bg-[#3B3360]">
-                    <?php if (!empty($profilePicture) && file_exists("../uploads/" . $profilePicture)): ?>
-                        <img src="../uploads/<?php echo $profilePicture; ?>" class="w-10 h-10 rounded-full object-cover">
-                    <?php else: ?>
-                        <div class="w-10 h-10 rounded-full bg-purple-500 flex items-center justify-center">
-                            <span class="material-icons">person</span>
-                        </div>
-                    <?php endif; ?>
-                    <div class="flex-1">
-                        <p class="font-medium"><?php echo $_SESSION['username']; ?></p>
-                        <p class="text-xs text-purple-300">Kasir</p>
-                    </div>
-                    <a href="../service/logout.php" class="text-red-400 hover:text-red-300 transition">
-                        <span class="material-icons">logout</span>
-                    </a>
-                </div>
-            </div>
-        </aside>
+        </div>
 
         <!-- Main Content -->
-        <main class="flex-1 p-8 overflow-y-auto">
-            <div class="max-w-7xl mx-auto">
-                <!-- Header -->
-                <div class="flex justify-between items-center mb-8">
-                    <div>
-                        <h2 class="text-2xl font-bold text-white">Checkout</h2>
-                        <p class="text-purple-300">Proses pembayaran pelanggan</p>
-                    </div>
+        <div class="ml-64 flex-1 overflow-y-auto">
+            <header class="bg-white shadow-sm">
+                <div class="flex justify-between items-center px-6 py-4">
+                    <h2 class="text-xl font-semibold text-gray-800">Checkout</h2>
                     <div class="flex items-center space-x-4">
-                        <div class="cart-timer" id="cartTimer">
-                            <span class="material-icons">timer</span>
-                            <span id="timeRemaining"><?= floor(($_SESSION['cart_expiry'] - time()) / 60) ?>:<?= str_pad(($_SESSION['cart_expiry'] - time()) % 60, 2, '0', STR_PAD_LEFT) ?></span>
+                        <span class="text-sm text-gray-500" id="currentDateTime"></span>
+                        <div class="relative">
+                            <a href="profile.php">
+                                <img src="<?= '../uploads/' . $profilePicture ?>" 
+                                     alt="Profile" 
+                                     class="w-8 h-8 rounded-full border-2 border-purple-500 cursor-pointer">
+                                <span class="absolute bottom-0 right-0 w-3 h-3 bg-green-500 rounded-full"></span>
+                            </a>
                         </div>
-                        <a href="transaksi.php" class="bg-purple-500 hover:bg-purple-600 text-white px-4 py-2 rounded-lg flex items-center space-x-2 transition">
-                            <span class="material-icons">add</span>
-                            <span>Transaksi Baru</span>
-                        </a>
                     </div>
                 </div>
-                
+            </header>
+
+            <main class="p-6">
                 <!-- Success/Error Message -->
                 <?php if (isset($_SESSION['success_message'])): ?>
                     <div class="alert-box">
-                        <span class="material-icons mr-2">check_circle</span>
+                        <i class="fas fa-check-circle mr-2"></i>
                         <span><?= $_SESSION['success_message'] ?></span>
                     </div>
                     <?php unset($_SESSION['success_message']); ?>
@@ -374,7 +366,7 @@ function format_currency($amount) {
                 
                 <?php if (isset($_SESSION['error_message'])): ?>
                     <div class="alert-box bg-red-500">
-                        <span class="material-icons mr-2">error</span>
+                        <i class="fas fa-exclamation-circle mr-2"></i>
                         <span><?= $_SESSION['error_message'] ?></span>
                     </div>
                     <?php unset($_SESSION['error_message']); ?>
@@ -382,12 +374,12 @@ function format_currency($amount) {
 
                 <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
                     <!-- Cart Section -->
-                    <div class="lg:col-span-2 bg-[#2A2540] p-6 rounded-xl shadow-lg">
+                    <div class="lg:col-span-2 bg-white rounded-xl shadow-md p-6 border-l-4 border-purple-600">
                         <div class="flex justify-between items-center mb-6">
-                            <h3 class="text-lg font-semibold text-white">
-                                <span class="material-icons mr-2">shopping_cart</span> Keranjang Belanja
+                            <h3 class="text-lg font-semibold text-gray-800">
+                                <i class="fas fa-shopping-cart mr-2"></i> Keranjang Belanja
                             </h3>
-                            <span class="text-sm text-purple-300"><?= count($_SESSION['cart'] ?? []) ?> item</span>
+                            <span class="text-sm text-purple-600"><?= count($_SESSION['cart'] ?? []) ?> item</span>
                         </div>
 
                         <div class="space-y-3 mb-6 max-h-[50vh] overflow-y-auto">
@@ -413,24 +405,24 @@ function format_currency($amount) {
                                                     <div class="quantity-control">
                                                         <a href="?update_quantity=1&index=<?= $index ?>&quantity=<?= $item['quantity']-1 ?>" 
                                                            class="quantity-btn">
-                                                            <span class="material-icons text-sm">remove</span>
+                                                            <i class="fas fa-minus text-xs"></i>
                                                         </a>
                                                         <span class="quantity-input"><?= $item['quantity'] ?></span>
                                                         <a href="?update_quantity=1&index=<?= $index ?>&quantity=<?= $item['quantity']+1 ?>" 
                                                            class="quantity-btn">
-                                                            <span class="material-icons text-sm">add</span>
+                                                            <i class="fas fa-plus text-xs"></i>
                                                         </a>
                                                     </div>
                                                     
                                                     <a href="?remove_from_cart=<?= $index ?>" 
-                                                       class="text-red-400 hover:text-red-300 p-2 ml-2">
-                                                        <span class="material-icons">delete</span>
+                                                       class="text-red-600 hover:text-red-800 p-2 ml-2">
+                                                        <i class="fas fa-trash"></i>
                                                     </a>
                                                 </div>
-                                                <p class="text-sm text-purple-300 mt-1">
+                                                <p class="text-sm text-purple-600 mt-1">
                                                     <?= format_currency($item['price']) ?> per item
                                                 </p>
-                                                <p class="text-xs text-gray-400 mt-1">
+                                                <p class="text-xs text-gray-500 mt-1">
                                                     Stok tersedia saat ditambahkan: <?= $item['stock'] ?>
                                                 </p>
                                             </div>
@@ -439,13 +431,13 @@ function format_currency($amount) {
                                 <?php endforeach; ?>
                             <?php else: ?>
                                 <div class="text-center py-8 text-gray-400">
-                                    <span class="material-icons text-4xl mb-3">shopping_cart</span>
+                                    <i class="fas fa-shopping-cart text-4xl mb-3"></i>
                                     <p class="text-lg">Keranjang belanja kosong</p>
                                 </div>
                             <?php endif; ?>
                         </div>
 
-                        <div class="border-t border-[#3B3360] pt-4">
+                        <div class="border-t border-gray-200 pt-4">
                             <?php if ($discount > 0): ?>
                                 <div class="flex justify-between text-sm mb-1">
                                     <p>Subtotal:</p>
@@ -453,32 +445,32 @@ function format_currency($amount) {
                                 </div>
                                 <div class="flex justify-between text-sm mb-1">
                                     <p>Diskon Member (<?= ($discount * 100) ?>%):</p>
-                                    <p class="text-green-400">- <?= format_currency($subtotal * $discount) ?></p>
+                                    <p class="text-green-600">- <?= format_currency($subtotal * $discount) ?></p>
                                 </div>
                             <?php endif; ?>
                             <div class="flex justify-between font-bold text-lg">
                                 <p>Total Pembayaran:</p>
-                                <p class="text-purple-300"><?= format_currency($total_after_discount) ?></p>
+                                <p class="text-purple-600"><?= format_currency($total_after_discount) ?></p>
                             </div>
                         </div>
                     </div>
 
                     <!-- Payment Section -->
-                    <div class="bg-[#2A2540] p-6 rounded-xl shadow-lg">
-                        <h3 class="text-lg font-semibold text-white mb-6">
-                            <span class="material-icons mr-2">credit_card</span> Pembayaran
+                    <div class="bg-white rounded-xl shadow-md p-6 border-l-4 border-purple-600">
+                        <h3 class="text-lg font-semibold text-gray-800 mb-6">
+                            <i class="fas fa-credit-card mr-2"></i> Pembayaran
                         </h3>
 
                         <form action="" method="GET" class="mb-6">
-                            <label class="block text-purple-300 mb-2">Nomor Telepon Member</label>
+                            <label class="block text-gray-600 mb-2">Nomor Telepon Member</label>
                             <div class="flex">
                                 <input type="text" name="phone" id="phone" 
-                                       class="border border-[#3B3360] p-3 rounded-l-lg w-full input-money focus:outline-none" 
+                                       class="border border-gray-300 p-3 rounded-l-lg w-full focus:outline-none focus:ring-1 focus:ring-purple-500" 
                                        placeholder="08xxx" 
                                        value="<?= isset($_GET['phone']) ? htmlspecialchars($_GET['phone']) : '' ?>">
                                 <button type="submit" name="check_member" 
-                                        class="bg-purple-500 text-white px-4 rounded-r-lg hover:bg-purple-600 transition-colors">
-                                    <span class="material-icons">search</span>
+                                        class="bg-purple-600 text-white px-4 rounded-r-lg hover:bg-purple-700 transition-colors">
+                                    <i class="fas fa-search"></i>
                                 </button>
                             </div>
                             <?php if ($member_status): ?>
@@ -493,9 +485,9 @@ function format_currency($amount) {
                             <input type="hidden" name="phone" value="<?= isset($_GET['phone']) ? htmlspecialchars($_GET['phone']) : '' ?>">
 
                             <div class="mb-4">
-                                <label class="block text-purple-300 mb-2">Jumlah Uang</label>
+                                <label class="block text-gray-600 mb-2">Jumlah Uang</label>
                                 <input name="amount" id="amount" 
-                                       class="w-full p-3 border border-[#3B3360] rounded-lg input-money focus:outline-none" 
+                                       class="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-purple-500 input-money" 
                                        type="number"
                                        required
                                        min="0"
@@ -504,34 +496,33 @@ function format_currency($amount) {
                                 <p id="amount-feedback" class="text-sm mt-1 hidden"></p>
                             </div>
 
-                            <!-- Update the payment method dropdown to match the dark theme -->
-                                <div class="mb-4">
-                                    <label class="block text-purple-300 mb-2">Metode Pembayaran</label>
-                                    <select name="payment_method" class="w-full p-3 border border-[#3B3360] rounded-lg focus:outline-none bg-[#2A2540] text-white" required>
-                                        <option value="">Pilih metode pembayaran</option>
-                                        <option value="tunai">Tunai</option>
-                                        <option value="qris">QRIS</option>
-                                    </select>
-                                </div>
+                            <div class="mb-4">
+                                <label class="block text-gray-600 mb-2">Metode Pembayaran</label>
+                                <select name="payment_method" class="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-purple-500" required>
+                                    <option value="">Pilih metode pembayaran</option>
+                                    <option value="tunai">Tunai</option>
+                                    <option value="qris">QRIS</option>
+                                </select>
+                            </div>
 
                             <div class="mb-6">
-                                <label class="block text-purple-300 mb-2">Kembalian</label>
+                                <label class="block text-gray-600 mb-2">Kembalian</label>
                                 <input name="change" id="change" 
-                                       class="w-full p-3 border border-[#3B3360] rounded-lg bg-[#1E1B2E]" 
+                                       class="w-full p-3 border border-gray-300 rounded-lg bg-gray-50" 
                                        type="number" 
                                        readonly>
                             </div>
 
                             <button type="submit" id="submit-btn" 
-                                    class="w-full py-3 bg-purple-500 text-white rounded-lg hover:bg-purple-600 transition-colors font-bold text-lg"
+                                    class="w-full py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors font-bold text-lg"
                                     <?= empty($_SESSION['cart']) ? 'disabled' : '' ?>>
-                                <span class="material-icons mr-2">check_circle</span> Konfirmasi Pembayaran
+                                <i class="fas fa-check-circle mr-2"></i> Konfirmasi Pembayaran
                             </button>
                         </form>
                     </div>
                 </div>
-            </div>
-        </main>
+            </main>
+        </div>
     </div>
 
     <script>
@@ -581,15 +572,15 @@ function format_currency($amount) {
                 this.classList.remove("invalid");
                 this.classList.add("valid");
                 feedback.textContent = `Pembayaran mencukupi (Kembalian: ${formatCurrency(change)})`;
-                feedback.classList.remove("hidden", "text-red-400");
-                feedback.classList.add("text-green-400");
+                feedback.classList.remove("hidden", "text-red-600");
+                feedback.classList.add("text-green-600");
             } else {
                 this.classList.remove("valid");
                 this.classList.add("invalid");
                 const kurang = total - amount;
                 feedback.textContent = `Kurang: ${formatCurrency(kurang)}`;
-                feedback.classList.remove("hidden", "text-green-400");
-                feedback.classList.add("text-red-400");
+                feedback.classList.remove("hidden", "text-green-600");
+                feedback.classList.add("text-red-600");
             }
         });
 

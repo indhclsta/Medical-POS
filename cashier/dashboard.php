@@ -6,11 +6,22 @@ if (!isset($_SESSION['email'])) {
     exit();
 }
 
+// Database connection
+$email = $_SESSION['email'];
+
+// Get cashier data
+$query = mysqli_query($conn, "SELECT * FROM admin WHERE email = '$email'");
+$cashier = mysqli_fetch_assoc($query);
+
+// Set variables
+$username = $cashier['username'];
+$image = !empty($cashier['image']) ? '../uploads/' . $cashier['image'] : 'default.jpg';
+
 // Get today's sales data
 $today = date('Y-m-d');
 $salesQuery = "SELECT COUNT(*) as total_transactions, SUM(total_price) as total_sales 
                FROM transactions 
-               WHERE DATE(date) = '$today'";
+               WHERE DATE(date) = '$today' AND fid_admin = ".$cashier['id'];
 $salesResult = mysqli_query($conn, $salesQuery);
 $salesData = mysqli_fetch_assoc($salesResult);
 $totalSales = $salesData['total_sales'] ?? 0;
@@ -20,7 +31,7 @@ $totalTransactions = $salesData['total_transactions'] ?? 0;
 $yesterday = date('Y-m-d', strtotime('-1 day'));
 $yesterdayQuery = "SELECT SUM(total_price) as total_sales 
                    FROM transactions 
-                   WHERE DATE(date) = '$yesterday'";
+                   WHERE DATE(date) = '$yesterday' AND fid_admin = ".$cashier['id'];
 $yesterdayResult = mysqli_query($conn, $yesterdayQuery);
 $yesterdayData = mysqli_fetch_assoc($yesterdayResult);
 $yesterdaySales = $yesterdayData['total_sales'] ?? 0;
@@ -49,258 +60,299 @@ if (isset($_GET['search']) && !empty($_GET['search'])) {
                                t.payment_method LIKE '%$searchKeyword%' OR
                                t.date LIKE '%$searchKeyword%') ";
 }
-$userId = $_SESSION['id'];
-$userQuery = "SELECT username, image FROM admin WHERE id = $userId";
-$userResult = mysqli_query($conn, $userQuery);
-$userData = mysqli_fetch_assoc($userResult);
-$profilePicture = $userData['image'] ?? 'default.jpg';
+
 // Get recent transactions with search condition
 $recentTransactionsQuery = "SELECT t.id, t.date, t.total_price, t.payment_method, a.username 
                             FROM transactions t
                             JOIN admin a ON t.fid_admin = a.id
-                            WHERE t.fid_admin = $userId 
+                            WHERE t.fid_admin = ".$cashier['id']."
                             " . ($searchCondition ? 'AND' . substr($searchCondition, 6) : '') . "
                             ORDER BY t.date DESC 
                             LIMIT 5";
 $recentTransactionsResult = mysqli_query($conn, $recentTransactionsQuery);
 ?>
+
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MediPOS - Dashboard Kasir</title>
+    <title>Cashier Dashboard - MediPOS</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
     <style>
         body {
-            background-color: #1E1B2E;
-            font-family: 'Inter', sans-serif;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f8fafc;
         }
-
         .sidebar {
-            background: linear-gradient(180deg, #2A2540 0%, #1E1B2E 100%);
-            border-right: 1px solid #3B3360;
-        }
-
-        .nav-item {
-            transition: all 0.2s ease;
-            border-radius: 0.5rem;
-        }
-
-        .nav-item:hover {
-            background-color: rgba(155, 135, 245, 0.1);
-        }
-
-        .nav-item.active {
-            background-color: #9B87F5;
+            background-color: #6b46c1;
             color: white;
         }
-
-        .nav-item.active:hover {
-            background-color: #8A75E5;
+        .sidebar a:hover {
+            background-color: #805ad5;
         }
-
         .stat-card {
-            background: linear-gradient(135deg, #2A2540 0%, #3B3360 100%);
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-            transition: transform 0.3s ease;
+            border-left: 4px solid #6b46c1;
         }
-
-        .stat-card:hover {
-            transform: translateY(-2px);
+        .bg-cashier {
+            background-color: #6b46c1;
         }
-
-        .table-row:hover {
-            background-color: rgba(155, 135, 245, 0.05);
+        .text-cashier {
+            color: #6b46c1;
+        }
+        .nav-active {
+            background-color: #805ad5;
+        }
+        .payment-cash {
+            background-color: #e6ffed;
+            color: #38a169;
+        }
+        .payment-transfer {
+            background-color: #ebf8ff;
+            color: #3182ce;
         }
     </style>
 </head>
-
-<body class="text-gray-200">
-    <div class="flex h-screen overflow-hidden">
+<body class="bg-gray-50">
+    <div class="flex h-screen">
         <!-- Sidebar -->
-        <aside class="sidebar w-64 flex flex-col p-5 space-y-8">
-            <!-- Logo -->
-            <div class="flex items-center space-x-3">
-                <div class="w-9 h-9 rounded-lg bg-purple-500 flex items-center justify-center">
-                    <span class="material-icons text-white">local_pharmacy</span>
+        <div class="sidebar w-64 px-4 py-8 shadow-lg fixed h-full">
+            <div class="flex items-center justify-center mb-8">
+                <h1 class="text-2xl font-bold">
+                    <span class="text-white">Medi</span><span class="text-purple-300">POS</span>
+                </h1>
+            </div>
+            
+            <div class="flex items-center px-4 py-3 mb-6 rounded-lg bg-purple-900">
+                <div class="w-10 h-10 rounded-full bg-purple-700 flex items-center justify-center">
+                    <i class="fas fa-user-tie text-white"></i>
                 </div>
-                <h1 class="text-xl font-bold text-purple-300">MediPOS</h1>
+                <div class="ml-3">
+                    <p class="font-medium text-white"><?= htmlspecialchars($username) ?></p>
+                    <p class="text-xs text-purple-200">Kasir</p>
+                </div>
             </div>
 
-            <!-- Navigation -->
-            <nav class="flex-1 flex flex-col space-y-2">
-                <a href="dashboard.php" class="nav-item active flex items-center p-3 space-x-3">
-                    <span class="material-icons">dashboard</span>
-                    <span>Dashboard</span>
+            <nav class="mt-8">
+                <a href="dashboard.php" class="flex items-center px-4 py-3 rounded-lg nav-active">
+                    <i class="fas fa-tachometer-alt mr-3"></i>
+                    Dashboard
                 </a>
-                <a href="transaksi.php" class="nav-item flex items-center p-3 space-x-3">
-                    <span class="material-icons">point_of_sale</span>
-                    <span>Transaksi</span>
+                <a href="transaksi.php" class="flex items-center px-4 py-3 rounded-lg hover:bg-purple-800">
+                    <i class="fas fa-cash-register mr-3"></i>
+                    Transaksi
                 </a>
-                <a href="manage_member.php" class="nav-item flex items-center p-3 space-x-3">
-                    <span class="material-icons">people</span>
-                    <span>Member</span>
+                <a href="manage_member.php" class="flex items-center px-4 py-3 rounded-lg hover:bg-purple-800">
+                    <i class="fas fa-users mr-3"></i>
+                    Kelola Member
                 </a>
-                <a href="reports.php" class="nav-item flex items-center p-3 space-x-3">
-                    <span class="material-icons">insert_chart</span>
-                    <span>Laporan</span>
+                <a href="reports.php" class="flex items-center px-4 py-3 rounded-lg hover:bg-purple-800">
+                    <i class="fas fa-chart-bar mr-3"></i>
+                    Laporan
+                </a>
+                <a href="../service/logout.php" class="flex items-center px-4 py-0 rounded-lg hover:bg-purple-800 mt-5 text-red-200">
+                    <i class="fas fa-sign-out-alt mr-3"></i>
+                    Logout
                 </a>
             </nav>
-
-            <!-- User & Logout -->
-            <div class="mt-auto">
-                <div class="flex items-center p-3 space-x-3 rounded-lg bg-[#3B3360]">
-                    <?php if (!empty($profilePicture) && file_exists("../uploads/" . $profilePicture)): ?>
-                        <img src="../uploads/<?php echo $profilePicture; ?>" class="w-10 h-10 rounded-full object-cover">
-                    <?php else: ?>
-                        <div class="w-10 h-10 rounded-full bg-purple-500 flex items-center justify-center">
-                            <span class="material-icons">person</span>
-                        </div>
-                    <?php endif; ?>
-                    <div class="flex-1">
-                        <p class="font-medium"><?php echo $_SESSION['username']; ?></p>
-                        <p class="text-xs text-purple-300">Kasir</p>
-                    </div>
-                    <a href="../service/logout.php" class="text-red-400 hover:text-red-300 transition">
-                        <span class="material-icons">logout</span>
-                    </a>
-                </div>
-            </div>
-        </aside>
+        </div>
 
         <!-- Main Content -->
-        <main class="flex-1 p-8 overflow-y-auto">
-            <div class="max-w-7xl mx-auto">
-                <!-- Header -->
-                <div class="flex justify-between items-center mb-8">
-                    <div>
-                        <h2 class="text-2xl font-bold text-white">Dashboard Kasir</h2>
-                        <p class="text-purple-300">Selamat datang kembali!</p>
-                    </div>
+        <div class="ml-64 flex-1 overflow-y-auto">
+            <header class="bg-white shadow-sm">
+                <div class="flex justify-between items-center px-6 py-4">
+                    <h2 class="text-xl font-semibold text-gray-800">Dashboard Kasir</h2>
                     <div class="flex items-center space-x-4">
-                        <form method="GET" action="" class="relative">
-                            <span class="material-icons absolute left-3 top-1/2 transform -translate-y-1/2 text-purple-300">search</span>
-                            <input
-                                type="text"
-                                name="search"
-                                placeholder="Cari transaksi..."
-                                value="<?php echo htmlspecialchars($searchKeyword); ?>"
-                                class="bg-[#2A2540] pl-10 pr-4 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 w-64">
-                        </form>
-                        <a href="transaksi.php" class="bg-purple-500 hover:bg-purple-600 text-white px-4 py-2 rounded-lg flex items-center space-x-2 transition">
-                            <span class="material-icons">add</span>
-                            <span>Transaksi Baru</span>
-                        </a>
+                        <span class="text-sm text-gray-500" id="currentDateTime"></span>
+                        <div class="relative">
+                            <a href="profile.php">
+                                <img src="<?= $image ?>" 
+                                     alt="Profile" 
+                                     class="w-8 h-8 rounded-full border-2 border-purple-500 cursor-pointer">
+                                <span class="absolute bottom-0 right-0 w-3 h-3 bg-green-500 rounded-full"></span>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </header>
+
+            <main class="p-6">
+                <!-- Welcome Card -->
+                <div class="bg-white rounded-xl shadow-md p-6 mb-6 border-l-4 border-purple-600">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <h2 class="text-2xl font-bold mb-2 text-gray-800">Halo, Kasir <?= htmlspecialchars($username) ?>!</h2>
+                            <p class="text-gray-600">Selamat bekerja hari ini! Berikut ringkasan aktivitas Anda.</p>
+                        </div>
+                        <div class="bg-purple-100 p-3 rounded-full">
+                            <i class="fas fa-user-tie text-purple-600 text-2xl"></i>
+                        </div>
                     </div>
                 </div>
 
-                <!-- Statistik -->
+                <!-- Stats Grid -->
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-                    <div class="stat-card p-6 rounded-xl">
+                    <div class="stat-card bg-white rounded-lg p-6 shadow">
                         <div class="flex items-center justify-between">
                             <div>
-                                <h3 class="text-sm font-medium text-purple-300 mb-1">Total Penjualan</h3>
-                                <p class="text-2xl font-bold text-white">Rp <?php echo number_format($totalSales, 0, ',', '.'); ?></p>
+                                <h3 class="text-gray-500 text-sm">Total Penjualan Hari Ini</h3>
+                                <p class="text-2xl font-bold text-purple-600">Rp <?= number_format($totalSales, 0, ',', '.') ?></p>
+                                <p class="text-xs mt-1 <?= $salesChange >= 0 ? 'text-green-500' : 'text-red-500' ?>">
+                                    <?= $salesChange >= 0 ? '↑' : '↓' ?> <?= number_format(abs($salesChange), 2) ?>% dari kemarin
+                                </p>
                             </div>
-                            <div class="w-12 h-12 rounded-full bg-purple-500 bg-opacity-20 flex items-center justify-center">
-                                <span class="material-icons text-purple-400">attach_money</span>
+                            <div class="bg-purple-100 p-3 rounded-full">
+                                <i class="fas fa-money-bill-wave text-purple-600"></i>
                             </div>
                         </div>
-                        <p class="text-xs <?php echo $salesChange >= 0 ? 'text-green-400' : 'text-red-400'; ?> mt-2">
-                            <?php echo $salesChange >= 0 ? '+' : ''; ?><?php echo number_format($salesChange, 2); ?>% dari kemarin
-                        </p>
+                        <div class="mt-4">
+                            <a href="reports.php" class="text-purple-600 text-sm hover:underline">Lihat Laporan →</a>
+                        </div>
                     </div>
 
-                    <div class="stat-card p-6 rounded-xl">
+                    <div class="stat-card bg-white rounded-lg p-6 shadow">
                         <div class="flex items-center justify-between">
                             <div>
-                                <h3 class="text-sm font-medium text-purple-300 mb-1">Jumlah Transaksi</h3>
-                                <p class="text-2xl font-bold text-white"><?php echo $totalTransactions; ?></p>
+                                <h3 class="text-gray-500 text-sm">Transaksi Hari Ini</h3>
+                                <p class="text-2xl font-bold text-purple-600"><?= $totalTransactions ?></p>
+                                <p class="text-xs mt-1 text-gray-500"><?= date('d M Y') ?></p>
                             </div>
-                            <div class="w-12 h-12 rounded-full bg-blue-500 bg-opacity-20 flex items-center justify-center">
-                                <span class="material-icons text-blue-400">receipt</span>
+                            <div class="bg-purple-100 p-3 rounded-full">
+                                <i class="fas fa-receipt text-purple-600"></i>
                             </div>
                         </div>
-                        <p class="text-xs text-green-400 mt-2">Hari ini</p>
+                        <div class="mt-4">
+                            <a href="transaksi.php" class="text-purple-600 text-sm hover:underline">Buat Transaksi →</a>
+                        </div>
                     </div>
 
-                    <div class="stat-card p-6 rounded-xl">
+                    <div class="stat-card bg-white rounded-lg p-6 shadow">
                         <div class="flex items-center justify-between">
                             <div>
-                                <h3 class="text-sm font-medium text-purple-300 mb-1">Stok Hampir Habis</h3>
-                                <p class="text-2xl font-bold text-white"><?php echo $lowStockCount; ?> Produk</p>
+                                <h3 class="text-gray-500 text-sm">Stok Hampir Habis</h3>
+                                <p class="text-2xl font-bold text-purple-600"><?= $lowStockCount ?></p>
+                                <p class="text-xs mt-1 text-gray-500">Produk dengan stok < 5</p>
                             </div>
-                            <div class="w-12 h-12 rounded-full bg-red-500 bg-opacity-20 flex items-center justify-center">
-                                <span class="material-icons text-red-400">warning</span>
+                            <div class="bg-purple-100 p-3 rounded-full">
+                                <i class="fas fa-exclamation-triangle text-purple-600"></i>
                             </div>
                         </div>
-                        <a href="#" class="text-xs text-purple-400 hover:text-purple-300 mt-2 inline-block transition">Lihat detail</a>
+                        <div class="mt-4">
+                            <a href="#" class="text-purple-600 text-sm hover:underline">Lihat Detail →</a>
+                        </div>
                     </div>
                 </div>
 
-                <!-- Riwayat Transaksi -->
-                <div class="bg-[#2A2540] p-6 rounded-xl shadow-lg">
-                    <div class="flex justify-between items-center mb-6">
-                        <h3 class="text-lg font-semibold text-white">Riwayat Transaksi Terbaru</h3>
-                        <a href="reports.php" class="text-sm text-purple-400 hover:text-purple-300 transition">Lihat Semua</a>
-                    </div>
-                    <?php if (isset($_GET['search']) && !empty($_GET['search'])): ?>
-                        <div class="mb-4 text-sm text-purple-300">
-                            Menampilkan hasil pencarian untuk: "<?php echo htmlspecialchars($_GET['search']); ?>"
-                            <a href="dashboard.php" class="ml-2 text-red-400 hover:text-red-300">Hapus pencarian</a>
+                <!-- Two Column Layout -->
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <!-- Recent Transactions -->
+                    <div class="bg-white rounded-lg shadow overflow-hidden">
+                        <div class="px-6 py-4 border-b border-gray-200 bg-purple-50">
+                            <div class="flex justify-between items-center">
+                                <h3 class="font-semibold text-lg text-purple-800">Transaksi Terakhir</h3>
+                                <form method="GET" action="" class="relative">
+                                    <input
+                                        type="text"
+                                        name="search"
+                                        placeholder="Cari transaksi..."
+                                        value="<?= htmlspecialchars($searchKeyword) ?>"
+                                        class="bg-white border border-gray-300 px-4 py-1 rounded-lg focus:outline-none focus:ring-1 focus:ring-purple-500 text-sm w-48">
+                                </form>
+                            </div>
                         </div>
-                    <?php endif; ?>
-                    <div class="overflow-x-auto">
-                        <table class="w-full text-left">
-                            <thead>
-                                <tr class="border-b border-gray-700 text-purple-300 text-sm">
-                                    <th class="pb-3 px-4">ID Transaksi</th>
-                                    <th class="pb-3 px-4">Tanggal</th>
-                                    <th class="pb-3 px-4">Total</th>
-                                    <th class="pb-3 px-4">Metode</th>
-                                    <th class="pb-3 px-4">Kasir</th>
-                                    <th class="pb-3 px-4"></th>
-                                </tr>
-                            </thead>
-                            <tbody class="divide-y divide-gray-700">
-                                <?php if (mysqli_num_rows($recentTransactionsResult) > 0): ?>
-                                    <?php while ($transaction = mysqli_fetch_assoc($recentTransactionsResult)): ?>
-                                        <tr class="table-row">
-                                            <td class="py-4 px-4">#TRX-<?php echo $transaction['id']; ?></td>
-                                            <td class="py-4 px-4"><?php echo date('d M Y, H:i', strtotime($transaction['date'])); ?></td>
-                                            <td class="py-4 px-4 font-medium">Rp <?php echo number_format($transaction['total_price'], 0, ',', '.'); ?></td>
-                                            <td class="py-4 px-4">
-                                                <span class="px-2 py-1 <?php echo $transaction['payment_method'] == 'tunai' ? 'bg-green-900 bg-opacity-30 text-green-400' : 'bg-blue-900 bg-opacity-30 text-blue-400'; ?> rounded-full text-xs">
-                                                    <?php echo ucfirst($transaction['payment_method']); ?>
+                        <div class="divide-y divide-gray-200">
+                            <?php if (mysqli_num_rows($recentTransactionsResult) > 0): ?>
+                                <?php while ($transaction = mysqli_fetch_assoc($recentTransactionsResult)): ?>
+                                    <div class="px-6 py-4 hover:bg-purple-50">
+                                        <div class="flex justify-between items-start">
+                                            <div>
+                                                <p class="font-medium">TRX-<?= $transaction['id'] ?></p>
+                                                <p class="text-sm text-gray-500"><?= date('d M Y H:i', strtotime($transaction['date'])) ?></p>
+                                            </div>
+                                            <div class="text-right">
+                                                <p class="font-bold text-purple-600">Rp <?= number_format($transaction['total_price'], 0, ',', '.') ?></p>
+                                                <span class="text-xs px-2 py-1 rounded-full <?= $transaction['payment_method'] == 'tunai' ? 'payment-cash' : 'payment-transfer' ?>">
+                                                    <?= ucfirst($transaction['payment_method']) ?>
                                                 </span>
-                                            </td>
-                                            <td class="py-4 px-4"><?php echo $transaction['username']; ?></td>
-                                            <td class="py-4 px-4 text-right">
-                                                <button class="text-purple-400 hover:text-purple-300 transition">
-                                                    <span class="material-icons">more_vert</span>
-                                                </button>
-                                            </td>
-                                        </tr>
-                                    <?php endwhile; ?>
-                                <?php else: ?>
-                                    <tr>
-                                        <td colspan="6" class="py-4 px-4 text-center text-gray-400">Tidak ada transaksi ditemukan</td>
-                                    </tr>
-                                <?php endif; ?>
-                            </tbody>
-                        </table>
+                                            </div>
+                                        </div>
+                                    </div>
+                                <?php endwhile; ?>
+                            <?php else: ?>
+                                <div class="px-6 py-4 text-center text-gray-500">
+                                    Tidak ada transaksi ditemukan
+                                </div>
+                            <?php endif; ?>
+                        </div>
+                        <div class="px-6 py-4 bg-purple-50 text-right">
+                            <a href="reports.php" class="text-sm text-purple-600 hover:underline font-medium">Lihat semua →</a>
+                        </div>
+                    </div>
+
+                    <!-- Quick Actions -->
+                    <div class="bg-white rounded-lg shadow overflow-hidden">
+                        <div class="px-6 py-4 border-b border-gray-200 bg-purple-50">
+                            <h3 class="font-semibold text-lg text-purple-800">Aksi Cepat</h3>
+                        </div>
+                        <div class="p-6 grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <a href="transaksi.php" class="bg-purple-100 hover:bg-purple-200 p-4 rounded-lg text-center transition-colors">
+                                <div class="text-purple-600 mb-2">
+                                    <i class="fas fa-cash-register text-2xl"></i>
+                                </div>
+                                <p class="font-medium text-purple-800">Transaksi Baru</p>
+                            </a>
+                            <a href="manage_member.php" class="bg-purple-100 hover:bg-purple-200 p-4 rounded-lg text-center transition-colors">
+                                <div class="text-purple-600 mb-2">
+                                    <i class="fas fa-user-plus text-2xl"></i>
+                                </div>
+                                <p class="font-medium text-purple-800">Tambah Member</p>
+                            </a>
+                            <a href="reports.php" class="bg-purple-100 hover:bg-purple-200 p-4 rounded-lg text-center transition-colors">
+                                <div class="text-purple-600 mb-2">
+                                    <i class="fas fa-file-pdf text-2xl"></i>
+                                </div>
+                                <p class="font-medium text-purple-800">Cetak Laporan</p>
+                            </a>
+                            <a href="#" class="bg-purple-100 hover:bg-purple-200 p-4 rounded-lg text-center transition-colors">
+                                <div class="text-purple-600 mb-2">
+                                    <i class="fas fa-bell text-2xl"></i>
+                                </div>
+                                <p class="font-medium text-purple-800">Notifikasi</p>
+                            </a>
+                        </div>
                     </div>
                 </div>
-            </div>
-        </main>
+            </main>
+        </div>
     </div>
 
-    <!-- Google Icons -->
-    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
-    <!-- Google Fonts -->
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-</body>
+    <script>
+        // Update date and time
+        function updateDateTime() {
+            const now = new Date();
+            const options = { 
+                weekday: 'long', 
+                year: 'numeric', 
+                month: 'long', 
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+            };
+            document.getElementById('currentDateTime').textContent = now.toLocaleDateString('id-ID', options);
+        }
+        
+        setInterval(updateDateTime, 1000);
+        updateDateTime();
 
+        // Logout confirmation
+        document.querySelector('a[href="../service/logout.php"]').addEventListener('click', function(e) {
+            e.preventDefault();
+            if (confirm('Anda yakin ingin logout?')) {
+                window.location.href = this.getAttribute('href');
+            }
+        });
+    </script>
+</body>
 </html>
