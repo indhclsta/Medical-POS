@@ -448,8 +448,13 @@ if ($search !== '') {
                     </div>
                     <div>
                         <label for="create_password" class="form-label">Password</label>
-                        <input type="password" id="create_password" name="password" required
-                            class="form-input" placeholder="Masukkan password">
+                        <div class="relative">
+                            <input type="password" id="create_password" name="password" required
+                                class="form-input pr-10" placeholder="Masukkan password">
+                            <span class="absolute inset-y-0 right-0 flex items-center pr-3 cursor-pointer" onclick="togglePassword('create_password', this)">
+                                <i class="far fa-eye text-gray-400"></i>
+                            </span>
+                        </div>
                     </div>
                     <div>
                         <label for="create_image" class="form-label">Foto Profil</label>
@@ -592,6 +597,20 @@ if ($search !== '') {
                 window.location.href = this.getAttribute('href');
             }
         });
+
+        function togglePassword(inputId, el) {
+            const input = document.getElementById(inputId);
+            const icon = el.querySelector('i');
+            if (input.type === 'password') {
+                input.type = 'text';
+                icon.classList.remove('fa-eye');
+                icon.classList.add('fa-eye-slash');
+            } else {
+                input.type = 'password';
+                icon.classList.remove('fa-eye-slash');
+                icon.classList.add('fa-eye');
+            }
+        }
     </script>
 </body>
 

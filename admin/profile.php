@@ -18,42 +18,42 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $current_password = $_POST['current_password'];
     $new_password = $_POST['new_password'];
     $confirm_password = $_POST['confirm_password'];
-    
+
     $errors = [];
-    
+
     // Validate username
     if (empty($username)) {
         $errors[] = "Username tidak boleh kosong";
     }
-    
+
     // Validate password change if any field is filled
     if (!empty($current_password) || !empty($new_password) || !empty($confirm_password)) {
         if (!password_verify($current_password, $admin['password'])) {
             $errors[] = "Password saat ini salah";
         }
-        
+
         if (empty($new_password)) {
             $errors[] = "Password baru tidak boleh kosong";
         } elseif (strlen($new_password) < 8) {
             $errors[] = "Password baru minimal 8 karakter";
         }
-        
+
         if ($new_password !== $confirm_password) {
             $errors[] = "Konfirmasi password tidak cocok";
         }
     }
-    
+
     // Handle image upload
     $image_path = $admin['image'];
     if (isset($_FILES['image']) && $_FILES['image']['error'] == 0) {
         $allowed_types = ['image/jpeg', 'image/png', 'image/gif'];
         $file_type = $_FILES['image']['type'];
-        
+
         if (in_array($file_type, $allowed_types)) {
             $upload_dir = '../uploads/';
             $file_name = uniqid() . '_' . basename($_FILES['image']['name']);
             $target_path = $upload_dir . $file_name;
-            
+
             if (move_uploaded_file($_FILES['image']['tmp_name'], $target_path)) {
                 // Delete old image if it's not the default
                 if ($image_path && $image_path != 'default.jpg' && file_exists('../uploads/' . $image_path)) {
@@ -67,22 +67,22 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             $errors[] = "Format file tidak didukung (hanya JPEG, PNG, GIF)";
         }
     }
-    
+
     // Update database if no errors
     if (empty($errors)) {
         $update_data = [
             "username = '$username'",
             "image = '$image_path'"
         ];
-        
+
         // Update password if changed
         if (!empty($new_password)) {
             $hashed_password = password_hash($new_password, PASSWORD_DEFAULT);
             $update_data[] = "password = '$hashed_password'";
         }
-        
+
         $update_query = "UPDATE admin SET " . implode(', ', $update_data) . " WHERE id = " . $admin['id'];
-        
+
         if (mysqli_query($conn, $update_query)) {
             $_SESSION['success_message'] = "Profil berhasil diperbarui";
             header("Location: profile.php");
@@ -96,6 +96,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -107,31 +108,39 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             background-color: #f8fafc;
         }
+
         .sidebar {
             background-color: #6b46c1;
             color: white;
         }
+
         .sidebar a:hover {
             background-color: #805ad5;
         }
+
         .bg-super-admin {
             background-color: #6b46c1;
         }
+
         .text-super-admin {
             color: #6b46c1;
         }
+
         .nav-active {
             background-color: #805ad5;
         }
+
         .profile-pic {
             transition: all 0.3s ease;
         }
+
         .profile-pic:hover {
             transform: scale(1.05);
             box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
         }
     </style>
 </head>
+
 <body class="bg-gray-50">
     <div class="flex h-screen">
         <!-- Sidebar -->
@@ -141,7 +150,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     <span class="text-white">Medi</span><span class="text-purple-300">POS</span>
                 </h1>
             </div>
-            
+
             <div class="flex items-center px-4 py-3 mb-6 rounded-lg bg-purple-900">
                 <div class="w-10 h-10 rounded-full bg-purple-700 flex items-center justify-center">
                     <i class="fas fa-user-shield text-white"></i>
@@ -196,9 +205,9 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     <div class="flex items-center space-x-4">
                         <span class="text-sm text-gray-500" id="currentDateTime"></span>
                         <div class="relative">
-                            <img src="../uploads/<?= htmlspecialchars($admin['image']) ?>" 
-                                 alt="Profile" 
-                                 class="w-8 h-8 rounded-full border-2 border-purple-500">
+                            <img src="../uploads/<?= htmlspecialchars($admin['image']) ?>"
+                                alt="Profile"
+                                class="w-8 h-8 rounded-full border-2 border-purple-500">
                         </div>
                     </div>
                 </div>
@@ -233,9 +242,9 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                             <!-- Profile Picture Section -->
                             <div class="w-full md:w-1/3 flex flex-col items-center">
                                 <div class="relative mb-4 profile-pic">
-                                    <img src="../uploads/<?= htmlspecialchars($admin['image'] ?: 'default.jpg') ?>" 
-                                         alt="Profile Picture" 
-                                         class="w-48 h-48 rounded-full object-cover border-4 border-purple-200">
+                                    <img src="../uploads/<?= htmlspecialchars($admin['image'] ?: 'default.jpg') ?>"
+                                        alt="Profile Picture"
+                                        class="w-48 h-48 rounded-full object-cover border-4 border-purple-200">
                                     <label for="image-upload" class="absolute bottom-0 right-0 bg-purple-600 text-white p-2 rounded-full cursor-pointer hover:bg-purple-700">
                                         <i class="fas fa-camera"></i>
                                     </label>
@@ -249,46 +258,59 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                             <div class="w-full md:w-2/3">
                                 <form method="POST" enctype="multipart/form-data">
                                     <input type="file" id="image-upload" name="image" class="hidden" accept="image/*">
-                                    
+
                                     <div class="mb-6">
                                         <h3 class="text-lg font-semibold text-gray-800 border-b pb-2 mb-4">Informasi Akun</h3>
-                                        
+
                                         <div class="mb-4">
                                             <label for="email" class="block text-sm font-medium text-gray-700 mb-1">Email</label>
-                                            <input type="email" id="email" 
-                                                   value="<?= htmlspecialchars($admin['email']) ?>" 
-                                                   class="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-100 cursor-not-allowed" 
-                                                   disabled>
+                                            <input type="email" id="email"
+                                                value="<?= htmlspecialchars($admin['email']) ?>"
+                                                class="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-100 cursor-not-allowed"
+                                                disabled>
                                         </div>
-                                        
+
                                         <div class="mb-4">
                                             <label for="username" class="block text-sm font-medium text-gray-700 mb-1">Username</label>
-                                            <input type="text" id="username" name="username" 
-                                                   value="<?= htmlspecialchars($admin['username']) ?>" 
-                                                   class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-purple-500 focus:border-purple-500">
+                                            <input type="text" id="username" name="username"
+                                                value="<?= htmlspecialchars($admin['username']) ?>"
+                                                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-purple-500 focus:border-purple-500">
                                         </div>
                                     </div>
 
                                     <div class="mb-6">
                                         <h3 class="text-lg font-semibold text-gray-800 border-b pb-2 mb-4">Ubah Password</h3>
                                         <p class="text-sm text-gray-500 mb-4">Biarkan kosong jika tidak ingin mengubah password</p>
-                                        
+
                                         <div class="mb-4">
                                             <label for="current_password" class="block text-sm font-medium text-gray-700 mb-1">Password Saat Ini</label>
-                                            <input type="password" id="current_password" name="current_password" 
-                                                   class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-purple-500 focus:border-purple-500">
+                                            <div class="relative">
+                                                <input type="password" id="current_password" name="current_password"
+                                                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-purple-500 focus:border-purple-500 pr-10">
+                                                <span class="absolute inset-y-0 right-0 flex items-center pr-3 cursor-pointer" onclick="togglePassword('current_password', this)">
+                                                    <i class="far fa-eye text-gray-400"></i>
+                                                </span>
+                                            </div>
                                         </div>
-                                        
                                         <div class="mb-4">
                                             <label for="new_password" class="block text-sm font-medium text-gray-700 mb-1">Password Baru</label>
-                                            <input type="password" id="new_password" name="new_password" 
-                                                   class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-purple-500 focus:border-purple-500">
+                                            <div class="relative">
+                                                <input type="password" id="new_password" name="new_password"
+                                                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-purple-500 focus:border-purple-500 pr-10">
+                                                <span class="absolute inset-y-0 right-0 flex items-center pr-3 cursor-pointer" onclick="togglePassword('new_password', this)">
+                                                    <i class="far fa-eye text-gray-400"></i>
+                                                </span>
+                                            </div>
                                         </div>
-                                        
                                         <div class="mb-4">
                                             <label for="confirm_password" class="block text-sm font-medium text-gray-700 mb-1">Konfirmasi Password Baru</label>
-                                            <input type="password" id="confirm_password" name="confirm_password" 
-                                                   class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-purple-500 focus:border-purple-500">
+                                            <div class="relative">
+                                                <input type="password" id="confirm_password" name="confirm_password"
+                                                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-purple-500 focus:border-purple-500 pr-10">
+                                                <span class="absolute inset-y-0 right-0 flex items-center pr-3 cursor-pointer" onclick="togglePassword('confirm_password', this)">
+                                                    <i class="far fa-eye text-gray-400"></i>
+                                                </span>
+                                            </div>
                                         </div>
                                     </div>
 
@@ -314,23 +336,23 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                         if (mysqli_num_rows($logs_query) > 0):
                             while ($log = mysqli_fetch_assoc($logs_query)):
                         ?>
-                            <div class="px-6 py-4 hover:bg-purple-50">
-                                <div class="flex justify-between items-start">
-                                    <div>
-                                        <p class="font-medium"><?= htmlspecialchars($log['activity']) ?></p>
+                                <div class="px-6 py-4 hover:bg-purple-50">
+                                    <div class="flex justify-between items-start">
+                                        <div>
+                                            <p class="font-medium"><?= htmlspecialchars($log['activity']) ?></p>
+                                        </div>
+                                        <span class="text-xs text-purple-600 bg-purple-50 px-2 py-1 rounded">
+                                            <?= date('H:i', strtotime($log['timestamp'])) ?>
+                                        </span>
                                     </div>
-                                    <span class="text-xs text-purple-600 bg-purple-50 px-2 py-1 rounded">
-                                        <?= date('H:i', strtotime($log['timestamp'])) ?>
-                                    </span>
+                                    <p class="text-xs text-gray-400 mt-1">
+                                        <?= date('d M Y', strtotime($log['timestamp'])) ?>
+                                    </p>
                                 </div>
-                                <p class="text-xs text-gray-400 mt-1">
-                                    <?= date('d M Y', strtotime($log['timestamp'])) ?>
-                                </p>
-                            </div>
-                        <?php
+                            <?php
                             endwhile;
                         else:
-                        ?>
+                            ?>
                             <div class="px-6 py-4 text-center text-gray-500">
                                 Tidak ada aktivitas terakhir
                             </div>
@@ -348,17 +370,17 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         // Update date and time
         function updateDateTime() {
             const now = new Date();
-            const options = { 
-                weekday: 'long', 
-                year: 'numeric', 
-                month: 'long', 
+            const options = {
+                weekday: 'long',
+                year: 'numeric',
+                month: 'long',
                 day: 'numeric',
                 hour: '2-digit',
                 minute: '2-digit'
             };
             document.getElementById('currentDateTime').textContent = now.toLocaleDateString('id-ID', options);
         }
-        
+
         setInterval(updateDateTime, 1000);
         updateDateTime();
 
@@ -367,11 +389,11 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             if (this.files && this.files[0]) {
                 const reader = new FileReader();
                 const imgElement = document.querySelector('.profile-pic img');
-                
+
                 reader.onload = function(e) {
                     imgElement.src = e.target.result;
                 }
-                
+
                 reader.readAsDataURL(this.files[0]);
             }
         });
@@ -384,5 +406,22 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             }
         });
     </script>
+
+    <script>
+        function togglePassword(inputId, el) {
+            const input = document.getElementById(inputId);
+            const icon = el.querySelector('i');
+            if (input.type === 'password') {
+                input.type = 'text';
+                icon.classList.remove('fa-eye');
+                icon.classList.add('fa-eye-slash');
+            } else {
+                input.type = 'password';
+                icon.classList.remove('fa-eye-slash');
+                icon.classList.add('fa-eye');
+            }
+        }
+    </script>
 </body>
+
 </html>
