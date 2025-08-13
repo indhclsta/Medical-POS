@@ -82,7 +82,8 @@ Mendukung **multiuser** dengan dua role utama: **Super Admin** dan **Kasir**, ma
 
 1. **Clone Repository**
    ```bash
-   git clone https://github.com/username/medical-pos.git
+   git clone https://github.com/indhclsta/medical-pos.git
    cd medical-pos
+
 
 
