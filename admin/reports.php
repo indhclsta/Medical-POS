@@ -40,8 +40,23 @@ if ($report_type == 'periode' && !empty($start_date) && !empty($end_date)) {
     $query .= " WHERE DATE(t.date) BETWEEN '$start_date' AND '$end_date'";
 }
 
-$query .= " ORDER BY t.date DESC";
-$transactions = mysqli_query($conn, $query);
+// Fitur search transaksi
+$search = isset($_GET['search']) ? trim($_GET['search']) : '';
+if ($search !== '') {
+    $query = "SELECT t.*, a.username as admin_name, m.name as member_name 
+              FROM transactions t
+              LEFT JOIN admin a ON t.fid_admin = a.id
+              LEFT JOIN member m ON t.fid_member = m.id
+              WHERE (a.username LIKE '%$search%' OR m.name LIKE '%$search%' OR t.payment_method LIKE '%$search%' OR t.id LIKE '%$search%')";
+    if ($report_type == 'periode' && !empty($start_date) && !empty($end_date)) {
+        $query .= " AND DATE(t.date) BETWEEN '$start_date' AND '$end_date'";
+    }
+    $query .= " ORDER BY t.date DESC";
+    $transactions = mysqli_query($conn, $query);
+} else {
+    $query .= " ORDER BY t.date DESC";
+    $transactions = mysqli_query($conn, $query);
+}
 
 // Calculate total income
 $total_query = "SELECT SUM(total_price) as total_income FROM transactions";
@@ -201,7 +216,7 @@ while ($row = mysqli_fetch_assoc($chart_result)) {
 
             th {
                 background-color: #f2f2f2 !important;
-                -webkit-print-color-adjust: exact;
+
             }
 
             .print-header {
@@ -498,15 +513,26 @@ while ($row = mysqli_fetch_assoc($chart_result)) {
 
                 <!-- Transaction Table -->
                 <div class="bg-white rounded-lg shadow overflow-hidden">
-                    <div class="px-6 py-4 border-b border-gray-200 bg-purple-50 flex justify-between items-center no-print">
-                        <h3 class="font-semibold text-lg text-purple-800">Daftar Transaksi</h3>
-                        <div class="flex space-x-3">
-                            <button onclick="preparePrint()" class="bg-purple-600 hover:bg-purple-700 text-white font-medium py-1 px-3 rounded text-sm flex items-center">
-                                <i class="fas fa-print mr-2"></i> Cetak Laporan
-                            </button>
-                            <button onclick="downloadPDF()" class="bg-red-600 hover:bg-red-700 text-white font-medium py-1 px-3 rounded text-sm flex items-center">
-                                <i class="fas fa-file-pdf mr-2"></i> Export PDF
-                            </button>
+                    <div class="px-6 py-4 border-b border-gray-200 bg-purple-50 flex flex-col md:flex-row md:justify-between md:items-center no-print">
+                        <h3 class="font-semibold text-lg text-purple-800 mb-2 md:mb-0">Daftar Transaksi</h3>
+                        <div class="flex flex-col md:flex-row md:items-center md:space-x-3 w-full md:w-auto">
+                            <form method="GET" class="flex items-center mb-2 md:mb-0 w-full md:w-auto">
+                                <!-- Pertahankan filter yang sudah diterapkan -->
+                                <input type="hidden" name="report_type" value="<?= htmlspecialchars($report_type) ?>">
+                                <input type="hidden" name="start_date" value="<?= htmlspecialchars($start_date) ?>">
+                                <input type="hidden" name="end_date" value="<?= htmlspecialchars($end_date) ?>">
+                                <input type="hidden" name="chart_type" value="<?= htmlspecialchars($chart_type) ?>">
+                                <input type="text" name="search" value="<?= htmlspecialchars($search) ?>" placeholder="Cari kasir, member, metode, ID..." class="border border-gray-300 rounded-l px-3 py-1 focus:outline-none focus:ring-2 focus:ring-purple-400 w-full md:w-64" autocomplete="off">
+                                <button type="submit" class="bg-purple-600 hover:bg-purple-700 text-white px-4 py-1 rounded-r font-medium">Cari</button>
+                            </form>
+                            <div class="flex space-x-3 ml-0 md:ml-3">
+                                <button onclick="preparePrint()" class="bg-purple-600 hover:bg-purple-700 text-white font-medium py-1 px-3 rounded text-sm flex items-center">
+                                    <i class="fas fa-print mr-2"></i> Cetak Laporan
+                                </button>
+                                <button onclick="downloadPDF()" class="bg-red-600 hover:bg-red-700 text-white font-medium py-1 px-3 rounded text-sm flex items-center">
+                                    <i class="fas fa-file-pdf mr-2"></i> Export PDF
+                                </button>
+                            </div>
                         </div>
                     </div>
                     <div class="overflow-x-auto">

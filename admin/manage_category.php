@@ -19,11 +19,11 @@ if (isset($_POST['tambah_kategori'])) {
         $fileName = basename($_FILES['category_image']['name']);
         $targetFilePath = $uploadDir . uniqid() . '_' . $fileName;
         $fileType = pathinfo($targetFilePath, PATHINFO_EXTENSION);
-        
+
         // Validasi file
-        $allowTypes = array('jpg','png','jpeg','gif');
+        $allowTypes = array('jpg', 'png', 'jpeg', 'gif');
         $maxFileSize = 2 * 1024 * 1024; // 2MB
-        
+
         if ($_FILES['category_image']['size'] > $maxFileSize) {
             $_SESSION['message'] = "Ukuran file terlalu besar (maks. 2MB)";
             $_SESSION['message_type'] = 'error';
@@ -41,7 +41,7 @@ if (isset($_POST['tambah_kategori'])) {
     // Cek apakah kategori sudah ada
     $check_query = "SELECT * FROM category WHERE category = '$nama'";
     $check_result = mysqli_query($conn, $check_query);
-    
+
     if (mysqli_num_rows($check_result) > 0) {
         $_SESSION['message'] = "Kategori sudah ada!";
         $_SESSION['message_type'] = 'error';
@@ -69,17 +69,17 @@ $image = !empty($admin['image']) ? '../uploads/' . $admin['image'] : '../assets/
 // Hapus Kategori
 if (isset($_GET['hapus'])) {
     $id = $_GET['hapus'];
-    
+
     // Cek apakah ada produk yang menggunakan kategori ini
     $check_product_query = "SELECT COUNT(*) as total FROM products WHERE fid_category = $id";
     $check_product_result = mysqli_query($conn, $check_product_query);
-    
+
     if (!$check_product_result) {
         die("Query error: " . mysqli_error($conn));
     }
-    
+
     $product_count = mysqli_fetch_assoc($check_product_result)['total'];
-    
+
     if ($product_count > 0) {
         $_SESSION['message'] = "Kategori tidak bisa dihapus karena masih ada produk yang terkait!";
         $_SESSION['message_type'] = 'error';
@@ -88,17 +88,17 @@ if (isset($_GET['hapus'])) {
         $get_image_query = "SELECT image FROM category WHERE id = $id";
         $image_result = mysqli_query($conn, $get_image_query);
         $image_data = mysqli_fetch_assoc($image_result);
-        
+
         if (!empty($image_data['image'])) {
             @unlink('../uploads/' . $image_data['image']);
         }
-        
+
         $query = "DELETE FROM category WHERE id = $id";
         if (mysqli_query($conn, $query)) {
             $_SESSION['message'] = "Kategori berhasil dihapus!";
             $_SESSION['message_type'] = 'success';
         } else {
-            $_SESSION['message'] = "Gagal menghapus kategori! Error: ".mysqli_error($conn);
+            $_SESSION['message'] = "Gagal menghapus kategori! Error: " . mysqli_error($conn);
             $_SESSION['message_type'] = 'error';
         }
     }
@@ -111,16 +111,16 @@ if (isset($_POST['update_kategori'])) {
     $id = $_POST['kategori_id'];
     $nama = $_POST['namaKategoriEdit'];
     $imageUpdate = '';
-    
+
     // Handle file upload jika ada gambar baru
     if (!empty($_FILES['category_image_edit']['name'])) {
         $fileName = basename($_FILES['category_image_edit']['name']);
         $targetFilePath = $uploadDir . uniqid() . '_' . $fileName;
         $fileType = pathinfo($targetFilePath, PATHINFO_EXTENSION);
-        
-        $allowTypes = array('jpg','png','jpeg','gif');
+
+        $allowTypes = array('jpg', 'png', 'jpeg', 'gif');
         $maxFileSize = 2 * 1024 * 1024; // 2MB
-        
+
         if ($_FILES['category_image_edit']['size'] > $maxFileSize) {
             $_SESSION['message'] = "Ukuran file terlalu besar (maks. 2MB)";
             $_SESSION['message_type'] = 'error';
@@ -130,7 +130,7 @@ if (isset($_POST['update_kategori'])) {
         } elseif (move_uploaded_file($_FILES['category_image_edit']['tmp_name'], $targetFilePath)) {
             $imageName = str_replace('../uploads/', '', $targetFilePath);
             $imageUpdate = ", image = '$imageName'";
-            
+
             // Hapus gambar lama jika ada
             $oldImageQuery = mysqli_query($conn, "SELECT image FROM category WHERE id = $id");
             $oldImage = mysqli_fetch_assoc($oldImageQuery)['image'];
@@ -142,17 +142,17 @@ if (isset($_POST['update_kategori'])) {
             $_SESSION['message_type'] = 'error';
         }
     }
-    
+
     // Cek apakah kategori sudah ada (kecuali kategori yang sedang diupdate)
     $check_query = "SELECT * FROM category WHERE category = '$nama' AND id != $id";
     $check_result = mysqli_query($conn, $check_query);
-    
+
     if (mysqli_num_rows($check_result) > 0) {
         $_SESSION['message'] = "Kategori sudah ada!";
         $_SESSION['message_type'] = 'error';
     } else {
         $query = "UPDATE category SET category = '$nama' $imageUpdate WHERE id = $id";
-        
+
         if (mysqli_query($conn, $query)) {
             $_SESSION['message'] = "Kategori berhasil diperbarui!";
             $_SESSION['message_type'] = 'success';
@@ -177,10 +177,25 @@ $total_pages = ceil($total_row['total'] / $results_per_page);
 
 // Ambil Data Kategori dengan pagination
 $kategoriData = mysqli_query($conn, "SELECT * FROM category ORDER BY id DESC LIMIT $offset, $results_per_page");
+
+// Fitur search kategori
+$search = isset($_GET['search']) ? trim($_GET['search']) : '';
+if ($search !== '') {
+    $query = "SELECT * FROM category WHERE category LIKE ? ORDER BY category ASC";
+    $stmt = $conn->prepare($query);
+    $search_param = "%$search%";
+    $stmt->bind_param("s", $search_param);
+    $stmt->execute();
+    $kategoriData = $stmt->get_result();
+    $stmt->close();
+} else {
+    $kategoriData = mysqli_query($conn, "SELECT * FROM category ORDER BY id DESC LIMIT $offset, $results_per_page");
+}
 ?>
 
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -192,61 +207,77 @@ $kategoriData = mysqli_query($conn, "SELECT * FROM category ORDER BY id DESC LIM
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             background-color: #f8fafc;
         }
+
         .sidebar {
             background-color: #6b46c1;
             color: white;
         }
+
         .sidebar a:hover {
             background-color: #805ad5;
         }
+
         .stat-card {
             border-left: 4px solid #6b46c1;
         }
+
         .bg-super-admin {
             background-color: #6b46c1;
         }
+
         .text-super-admin {
             color: #6b46c1;
         }
+
         .nav-active {
             background-color: #805ad5;
         }
+
         .badge-active {
             background-color: #dcfce7;
             color: #166534;
         }
+
         .badge-inactive {
             background-color: #fee2e2;
             color: #991b1b;
         }
+
         .badge-warning {
             background-color: #fef3c7;
             color: #92400e;
         }
+
         .badge-danger {
             background-color: #fee2e2;
             color: #b91c1c;
         }
+
         .badge-primary {
             background-color: #e9d5ff;
             color: #6b21a8;
         }
+
         .form-input:focus {
             border-color: #6b46c1;
             box-shadow: 0 0 0 3px rgba(107, 70, 193, 0.2);
         }
+
         .modal {
-            background-color: rgba(0,0,0,0.5);
+            background-color: rgba(0, 0, 0, 0.5);
             backdrop-filter: blur(4px);
         }
+
         .pagination a.active {
             background-color: #6b46c1;
             color: white;
             border-color: #6b46c1;
         }
+
         .pagination a:hover:not(.active) {
             background-color: #e9d5ff;
         }
+
         .image-preview {
             max-width: 100px;
             max-height: 100px;
@@ -254,6 +285,7 @@ $kategoriData = mysqli_query($conn, "SELECT * FROM category ORDER BY id DESC LIM
         }
     </style>
 </head>
+
 <body class="bg-gray-50">
     <div class="flex h-screen">
         <!-- Sidebar -->
@@ -263,7 +295,7 @@ $kategoriData = mysqli_query($conn, "SELECT * FROM category ORDER BY id DESC LIM
                     <span class="text-white">Medi</span><span class="text-purple-300">POS</span>
                 </h1>
             </div>
-            
+
             <div class="flex items-center px-4 py-3 mb-6 rounded-lg bg-purple-900">
                 <div class="w-10 h-10 rounded-full bg-purple-700 flex items-center justify-center">
                     <i class="fas fa-user-shield text-white"></i>
@@ -322,9 +354,9 @@ $kategoriData = mysqli_query($conn, "SELECT * FROM category ORDER BY id DESC LIM
                     <div class="flex items-center space-x-4">
                         <span class="text-sm text-gray-500" id="currentDateTime"></span>
                         <div class="relative">
-                            <img src="<?= $image ?>" 
-                                 alt="Profile" 
-                                 class="w-8 h-8 rounded-full border-2 border-purple-500">
+                            <img src="<?= $image ?>"
+                                alt="Profile"
+                                class="w-8 h-8 rounded-full border-2 border-purple-500">
                             <span class="absolute bottom-0 right-0 w-3 h-3 bg-green-500 rounded-full"></span>
                         </div>
                     </div>
@@ -338,9 +370,15 @@ $kategoriData = mysqli_query($conn, "SELECT * FROM category ORDER BY id DESC LIM
                         <h2 class="text-2xl font-bold text-gray-800">Daftar Kategori</h2>
                         <p class="text-gray-600">Kelola kategori produk</p>
                     </div>
-                    <button id="addCategoryBtn" class="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg flex items-center">
-                        <i class="fas fa-plus mr-2"></i> Tambah Kategori
-                    </button>
+                    <div class="flex gap-2 items-center">
+                        <form method="GET" class="flex gap-2">
+                            <input type="text" name="search" value="<?= htmlspecialchars($search ?? '') ?>" placeholder="Cari kategori..." class="form-input px-3 py-2 rounded border border-gray-300 focus:outline-none focus:ring">
+                            <button type="submit" class="px-4 py-2 bg-purple-600 text-white rounded hover:bg-purple-700"><i class="fas fa-search"></i> Cari</button>
+                        </form>
+                        <button id="addCategoryBtn" class="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg flex items-center">
+                            <i class="fas fa-plus mr-2"></i> Tambah Kategori
+                        </button>
+                    </div>
                 </div>
 
                 <!-- Categories Table -->
@@ -355,43 +393,43 @@ $kategoriData = mysqli_query($conn, "SELECT * FROM category ORDER BY id DESC LIM
                                 </tr>
                             </thead>
                             <tbody class="bg-white divide-y divide-gray-200">
-                                <?php 
+                                <?php
                                 $no = $offset + 1;
                                 if ($kategoriData && mysqli_num_rows($kategoriData) > 0) {
-                                    while ($row = mysqli_fetch_assoc($kategoriData)) { 
+                                    while ($row = mysqli_fetch_assoc($kategoriData)) {
                                         $categoryImage = !empty($row['image']) ? '../uploads/' . $row['image'] : '../assets/default-category.png';
                                 ?>
-                                <tr class="hover:bg-purple-50 transition-colors">
-                                    <td class="px-4 py-3 whitespace-nowrap"><?= $no++ ?></td>
-                                    <td class="px-4 py-3">
-                                        <div class="flex items-center">
-                                            <div class="flex-shrink-0 h-10 w-10">
-                                                <img class="h-10 w-10 rounded-full object-cover" 
-                                                     src="<?= $categoryImage ?>" 
-                                                     alt="<?= htmlspecialchars($row['category']) ?>"
-                                                     onerror="this.src='../assets/default-category.png'">
-                                            </div>
-                                            <div class="ml-4">
-                                                <span class="badge-primary px-3 py-1 rounded-full text-sm">
-                                                    <?= htmlspecialchars($row['category']) ?>
-                                                </span>
-                                            </div>
-                                        </div>
-                                    </td>
-                                    <td class="px-4 py-3 text-right">
-                                        <div class="flex justify-end space-x-2">
-                                            <button onclick="openEditModal(<?= $row['id'] ?>, '<?= htmlspecialchars($row['category']) ?>', '<?= $row['image'] ?>')"
-                                               class="text-purple-600 hover:text-purple-800 p-2 rounded-md hover:bg-purple-100 transition-colors">
-                                                <i class="fas fa-edit"></i>
-                                            </button>
-                                            <button onclick="hapusKategori(<?= $row['id'] ?>)"
-                                               class="text-red-600 hover:text-red-800 p-2 rounded-md hover:bg-red-100 transition-colors">
-                                                <i class="fas fa-trash"></i>
-                                            </button>
-                                        </div>
-                                    </td>
-                                </tr>
-                                <?php 
+                                        <tr class="hover:bg-purple-50 transition-colors">
+                                            <td class="px-4 py-3 whitespace-nowrap"><?= $no++ ?></td>
+                                            <td class="px-4 py-3">
+                                                <div class="flex items-center">
+                                                    <div class="flex-shrink-0 h-10 w-10">
+                                                        <img class="h-10 w-10 rounded-full object-cover"
+                                                            src="<?= $categoryImage ?>"
+                                                            alt="<?= htmlspecialchars($row['category']) ?>"
+                                                            onerror="this.src='../assets/default-category.png'">
+                                                    </div>
+                                                    <div class="ml-4">
+                                                        <span class="badge-primary px-3 py-1 rounded-full text-sm">
+                                                            <?= htmlspecialchars($row['category']) ?>
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            <td class="px-4 py-3 text-right">
+                                                <div class="flex justify-end space-x-2">
+                                                    <button onclick="openEditModal(<?= $row['id'] ?>, '<?= htmlspecialchars($row['category']) ?>', '<?= $row['image'] ?>')"
+                                                        class="text-purple-600 hover:text-purple-800 p-2 rounded-md hover:bg-purple-100 transition-colors">
+                                                        <i class="fas fa-edit"></i>
+                                                    </button>
+                                                    <button onclick="hapusKategori(<?= $row['id'] ?>)"
+                                                        class="text-red-600 hover:text-red-800 p-2 rounded-md hover:bg-red-100 transition-colors">
+                                                        <i class="fas fa-trash"></i>
+                                                    </button>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                <?php
                                     }
                                 } else {
                                     echo '<tr>
@@ -405,7 +443,7 @@ $kategoriData = mysqli_query($conn, "SELECT * FROM category ORDER BY id DESC LIM
                             </tbody>
                         </table>
                     </div>
-                    
+
                     <!-- Pagination -->
                     <div class="bg-white px-4 py-3 flex items-center justify-between border-t border-gray-200">
                         <div class="flex-1 flex justify-between sm:hidden">
@@ -428,31 +466,31 @@ $kategoriData = mysqli_query($conn, "SELECT * FROM category ORDER BY id DESC LIM
                                         <span class="sr-only">Previous</span>
                                         <i class="fas fa-chevron-left"></i>
                                     </a>
-                                    
-                                    <?php 
+
+                                    <?php
                                     $startPage = max(1, $page - 2);
                                     $endPage = min($total_pages, $page + 2);
-                                    
+
                                     if ($startPage > 1) {
                                         echo '<a href="?page=1" class="relative inline-flex items-center px-4 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50">1</a>';
                                         if ($startPage > 2) {
                                             echo '<span class="relative inline-flex items-center px-4 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-500">...</span>';
                                         }
                                     }
-                                    
+
                                     for ($i = $startPage; $i <= $endPage; $i++) {
                                         $active = $i == $page ? 'bg-purple-100 border-purple-500 text-purple-600' : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50';
-                                        echo '<a href="?page='.$i.'" class="relative inline-flex items-center px-4 py-2 border text-sm font-medium '.$active.'">'.$i.'</a>';
+                                        echo '<a href="?page=' . $i . '" class="relative inline-flex items-center px-4 py-2 border text-sm font-medium ' . $active . '">' . $i . '</a>';
                                     }
-                                    
+
                                     if ($endPage < $total_pages) {
                                         if ($endPage < $total_pages - 1) {
                                             echo '<span class="relative inline-flex items-center px-4 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-500">...</span>';
                                         }
-                                        echo '<a href="?page='.$total_pages.'" class="relative inline-flex items-center px-4 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50">'.$total_pages.'</a>';
+                                        echo '<a href="?page=' . $total_pages . '" class="relative inline-flex items-center px-4 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50">' . $total_pages . '</a>';
                                     }
                                     ?>
-                                    
+
                                     <a href="?page=<?= min($total_pages, $page + 1) ?>" class="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 <?= $page >= $total_pages ? 'opacity-50 cursor-not-allowed' : '' ?>">
                                         <span class="sr-only">Next</span>
                                         <i class="fas fa-chevron-right"></i>
@@ -482,7 +520,7 @@ $kategoriData = mysqli_query($conn, "SELECT * FROM category ORDER BY id DESC LIM
                     </button>
                 </div>
             </div>
-            
+
             <!-- Modal Body -->
             <form action="manage_category.php" method="POST" enctype="multipart/form-data" class="p-4 space-y-4">
                 <div>
@@ -538,7 +576,7 @@ $kategoriData = mysqli_query($conn, "SELECT * FROM category ORDER BY id DESC LIM
                     </button>
                 </div>
             </div>
-            
+
             <!-- Modal Body -->
             <form action="manage_category.php" method="POST" enctype="multipart/form-data" class="p-4 space-y-4">
                 <input type="hidden" name="kategori_id" id="kategoriId">
@@ -583,17 +621,17 @@ $kategoriData = mysqli_query($conn, "SELECT * FROM category ORDER BY id DESC LIM
         // Update date and time
         function updateDateTime() {
             const now = new Date();
-            const options = { 
-                weekday: 'long', 
-                year: 'numeric', 
-                month: 'long', 
+            const options = {
+                weekday: 'long',
+                year: 'numeric',
+                month: 'long',
                 day: 'numeric',
                 hour: '2-digit',
                 minute: '2-digit'
             };
             document.getElementById('currentDateTime').textContent = now.toLocaleDateString('id-ID', options);
         }
-        
+
         setInterval(updateDateTime, 1000);
         updateDateTime();
 
@@ -605,10 +643,10 @@ $kategoriData = mysqli_query($conn, "SELECT * FROM category ORDER BY id DESC LIM
         function openEditModal(id, name, image = '') {
             document.getElementById('kategoriId').value = id;
             document.getElementById('namaKategoriEdit').value = name;
-            
+
             const preview = document.getElementById('editCategoryImagePreview');
             preview.src = image ? '../uploads/' + image : '../assets/default-category.png';
-            
+
             document.getElementById('modalEditKategori').classList.remove('hidden');
         }
 
@@ -651,4 +689,5 @@ $kategoriData = mysqli_query($conn, "SELECT * FROM category ORDER BY id DESC LIM
         <?php endif; ?>
     </script>
 </body>
+
 </html>

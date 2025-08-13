@@ -50,14 +50,29 @@ if (!mysqli_query($conn, $inactive_query)) {
     error_log("Failed to update inactive members: " . mysqli_error($conn));
 }
 
-// Get all members
-$query = "SELECT * FROM member ORDER BY id ASC";
-$members = mysqli_query($conn, $query);
-if (!$members) {
-    error_log("Failed to fetch members: " . mysqli_error($conn));
-    $members = [];
+// Fitur search member
+$search = isset($_GET['search']) ? trim($_GET['search']) : '';
+if ($search !== '') {
+    $query = "SELECT * FROM member WHERE name LIKE ? OR phone LIKE ? ORDER BY id ASC";
+    $stmt = $conn->prepare($query);
+    $search_param = "%$search%";
+    $stmt->bind_param("ss", $search_param, $search_param);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    if ($result) {
+        $members = $result->fetch_all(MYSQLI_ASSOC);
+    } else {
+        $members = [];
+    }
+    $stmt->close();
 } else {
-    $members = mysqli_fetch_all($members, MYSQLI_ASSOC);
+    $query = "SELECT * FROM member ORDER BY id ASC";
+    $result = mysqli_query($conn, $query);
+    if ($result) {
+        $members = mysqli_fetch_all($result, MYSQLI_ASSOC);
+    } else {
+        $members = [];
+    }
 }
 
 // Check edit mode
@@ -234,7 +249,10 @@ if (isset($_SESSION['error'])) {
                         <h2 class="text-2xl font-bold text-gray-800">Daftar Member</h2>
                         <p class="text-gray-600">Kelola data member untuk sistem loyalty program</p>
                     </div>
-                    <!-- Tombol tambah member dihapus -->
+                    <form method="GET" class="flex gap-2">
+                        <input type="text" name="search" value="<?= htmlspecialchars($search ?? '') ?>" placeholder="Cari nama/no. telepon member..." class="form-input px-3 py-2 rounded border border-gray-300 focus:outline-none focus:ring">
+                        <button type="submit" class="px-4 py-2 bg-purple-600 text-white rounded hover:bg-purple-700"><i class="fas fa-search"></i> Cari</button>
+                    </form>
                 </div>
 
                 <!-- Success/Error Messages -->

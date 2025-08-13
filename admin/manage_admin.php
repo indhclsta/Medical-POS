@@ -333,18 +333,16 @@ if ($search !== '') {
                 <!-- Action Bar -->
                 <div class="flex justify-between items-center mb-6">
                     <h3 class="text-lg font-semibold text-gray-800">Daftar Kasir</h3>
-                    <button onclick="openCreateModal()"
-                        class="btn-primary px-4 py-2 rounded-lg font-medium flex items-center">
-                        <i class="fas fa-plus mr-2"></i> Tambah Kasir
-                    </button>
-                </div>
-
-                <!-- Search Bar -->
-                <div class="flex w-full max-w-md justify-end mb-6">
-                    <form method="GET" class="flex gap-2 w-full max-w-md justify-end">
-                        <input type="text" name="search" value="<?= htmlspecialchars($search ?? '') ?>" placeholder="Cari username/email kasir..." class="form-input px-3 py-2 rounded border border-gray-300 focus:outline-none focus:ring w-full">
-                        <button type="submit" class="px-4 py-2 bg-purple-600 text-white rounded hover:bg-purple-700"><i class="fas fa-search"></i> Cari</button>
-                    </form>
+                    <div class="flex gap-2 items-center">
+                        <form method="GET" class="flex gap-2">
+                            <input type="text" name="search" value="<?= htmlspecialchars($search ?? '') ?>" placeholder="Cari username/email kasir..." class="form-input px-3 py-2 rounded border border-gray-300 focus:outline-none focus:ring">
+                            <button type="submit" class="px-4 py-2 bg-purple-600 text-white rounded hover:bg-purple-700"><i class="fas fa-search"></i> Cari</button>
+                        </form>
+                        <button onclick="openCreateModal()"
+                            class="btn-primary px-4 py-2 rounded-lg font-medium flex items-center">
+                            <i class="fas fa-plus mr-2"></i> Tambah Kasir
+                        </button>
+                    </div>
                 </div>
 
                 <!-- Notifications -->

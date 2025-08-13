@@ -21,16 +21,20 @@ $limit = 10;
 $page = isset($_GET['page']) ? (int)$_GET['page'] : 1;
 $offset = ($page - 1) * $limit;
 
+// Search functionality
+$search = isset($_GET['search']) ? mysqli_real_escape_string($conn, $_GET['search']) : '';
+
 // Get total products
-$totalQuery = "SELECT COUNT(*) as total FROM products";
+$totalQuery = "SELECT COUNT(*) as total FROM products WHERE product_name LIKE '%$search%' OR barcode LIKE '%$search%' OR fid_category IN (SELECT id FROM category WHERE category LIKE '%$search%')";
 $totalResult = mysqli_query($conn, $totalQuery);
 $totalData = mysqli_fetch_assoc($totalResult)['total'];
 $totalPages = ceil($totalData / $limit);
 
-// Get products with pagination
+// Get products with pagination and search
 $queryProduk = "SELECT p.*, c.category as category_name FROM products p 
                 LEFT JOIN category c ON p.fid_category = c.id 
-                ORDER BY p.id DESC LIMIT $limit OFFSET $offset";
+                WHERE p.product_name LIKE '%$search%' OR p.barcode LIKE '%$search%' OR p.fid_category IN (SELECT id FROM category WHERE category LIKE '%$search%')
+                ORDER BY p.id ASC LIMIT $limit OFFSET $offset";
 $resultProduk = mysqli_query($conn, $queryProduk);
 
 // Get categories for dropdown
@@ -435,9 +439,15 @@ if (isset($_SESSION['error'])) {
                         <h2 class="text-2xl font-bold text-gray-800">Daftar Produk</h2>
                         <p class="text-gray-600">Kelola produk dan stok inventori</p>
                     </div>
-                    <button id="addProductBtn" class="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg flex items-center">
-                        <i class="fas fa-plus mr-2"></i>Tambah Produk
-                    </button>
+                    <div class="flex gap-2 items-center">
+                        <form method="GET" class="flex gap-2">
+                            <input type="text" name="search" value="<?= htmlspecialchars($search ?? '') ?>" placeholder="Cari produk/barcode/kategori..." class="form-input px-3 py-2 rounded border border-gray-300 focus:outline-none focus:ring">
+                            <button type="submit" class="px-4 py-2 bg-purple-600 text-white rounded hover:bg-purple-700"><i class="fas fa-search"></i> Cari</button>
+                        </form>
+                        <button id="addProductBtn" class="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg flex items-center">
+                            <i class="fas fa-plus mr-2"></i>Tambah Produk
+                        </button>
+                    </div>
                 </div>
 
                 <!-- Products Table -->
