@@ -1,4 +1,4 @@
-<?php 
+<?php
 require_once '../service/connection.php';
 session_start();
 if (!isset($_SESSION['email'])) {
@@ -22,11 +22,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['profile_picture']) &
     if (!file_exists($targetDir)) {
         mkdir($targetDir, 0777, true);
     }
-    
+
     $fileName = uniqid() . '_' . basename($_FILES['profile_picture']['name']);
     $targetFile = $targetDir . $fileName;
     $imageFileType = strtolower(pathinfo($targetFile, PATHINFO_EXTENSION));
-    
+
     // Check if image file is a actual image
     $check = getimagesize($_FILES['profile_picture']['tmp_name']);
     if ($check !== false) {
@@ -66,7 +66,7 @@ $updateSuccess = false;
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_profile'])) {
     $username = mysqli_real_escape_string($conn, $_POST['username']);
     $email = mysqli_real_escape_string($conn, $_POST['email']);
-    
+
     // Check if password is being updated
     if (!empty($_POST['password'])) {
         $password = password_hash($_POST['password'], PASSWORD_DEFAULT);
@@ -74,7 +74,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_profile'])) {
     } else {
         $updateQuery = "UPDATE admin SET username = '$username', email = '$email' WHERE id = $userId";
     }
-    
+
     if (mysqli_query($conn, $updateQuery)) {
         $updateSuccess = true;
         // Refresh user data
@@ -88,6 +88,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_profile'])) {
 ?>
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -99,40 +100,51 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_profile'])) {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             background-color: #f8fafc;
         }
+
         .sidebar {
             background-color: #6b46c1;
             color: white;
         }
+
         .sidebar a:hover {
             background-color: #805ad5;
         }
+
         .stat-card {
             border-left: 4px solid #6b46c1;
         }
+
         .bg-cashier {
             background-color: #6b46c1;
         }
+
         .text-cashier {
             color: #6b46c1;
         }
+
         .nav-active {
             background-color: #805ad5;
         }
+
         .profile-card {
             border-left: 4px solid #6b46c1;
         }
+
         .input-field:focus {
             border-color: #6b46c1;
             box-shadow: 0 0 0 2px rgba(107, 70, 193, 0.3);
         }
+
         .activity-item {
             transition: all 0.2s ease;
         }
+
         .activity-item:hover {
             background-color: #f3f4f6;
         }
     </style>
 </head>
+
 <body class="bg-gray-50">
     <div class="flex h-screen">
         <!-- Sidebar -->
@@ -142,7 +154,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_profile'])) {
                     <span class="text-white">Medi</span><span class="text-purple-300">POS</span>
                 </h1>
             </div>
-            
+
             <div class="flex items-center px-4 py-3 mb-6 rounded-lg bg-purple-900">
                 <div class="w-10 h-10 rounded-full bg-purple-700 flex items-center justify-center">
                     <i class="fas fa-user-tie text-white"></i>
@@ -170,10 +182,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_profile'])) {
                     <i class="fas fa-chart-bar mr-3"></i>
                     Laporan
                 </a>
-                <a href="profile.php" class="flex items-center px-4 py-3 rounded-lg nav-active">
-                    <i class="fas fa-user-circle mr-3"></i>
-                    Profile
-                </a>
                 <a href="../service/logout.php" class="flex items-center px-4 py-0 rounded-lg hover:bg-purple-800 mt-5 text-red-200">
                     <i class="fas fa-sign-out-alt mr-3"></i>
                     Logout
@@ -190,9 +198,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_profile'])) {
                         <span class="text-sm text-gray-500" id="currentDateTime"></span>
                         <div class="relative">
                             <a href="profile.php">
-                                <img src="<?= '../uploads/' . $profilePicture ?>" 
-                                     alt="Profile" 
-                                     class="w-8 h-8 rounded-full border-2 border-purple-500 cursor-pointer">
+                                <img src="<?= '../uploads/' . $profilePicture ?>"
+                                    alt="Profile"
+                                    class="w-8 h-8 rounded-full border-2 border-purple-500 cursor-pointer">
                                 <span class="absolute bottom-0 right-0 w-3 h-3 bg-green-500 rounded-full"></span>
                             </a>
                         </div>
@@ -203,24 +211,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_profile'])) {
             <main class="p-6">
                 <!-- Success/Error Messages -->
                 <?php if ($updateSuccess): ?>
-                <div class="mb-6 p-4 bg-green-100 border-l-4 border-green-500 text-green-700 rounded-lg flex items-center">
-                    <i class="fas fa-check-circle mr-2"></i>
-                    Profile berhasil diperbarui!
-                </div>
+                    <div class="mb-6 p-4 bg-green-100 border-l-4 border-green-500 text-green-700 rounded-lg flex items-center">
+                        <i class="fas fa-check-circle mr-2"></i>
+                        Profile berhasil diperbarui!
+                    </div>
                 <?php endif; ?>
-                
+
                 <?php if ($uploadSuccess): ?>
-                <div class="mb-6 p-4 bg-green-100 border-l-4 border-green-500 text-green-700 rounded-lg flex items-center">
-                    <i class="fas fa-check-circle mr-2"></i>
-                    Foto profil berhasil diubah!
-                </div>
+                    <div class="mb-6 p-4 bg-green-100 border-l-4 border-green-500 text-green-700 rounded-lg flex items-center">
+                        <i class="fas fa-check-circle mr-2"></i>
+                        Foto profil berhasil diubah!
+                    </div>
                 <?php endif; ?>
-                
+
                 <?php if (!empty($uploadError)): ?>
-                <div class="mb-6 p-4 bg-red-100 border-l-4 border-red-500 text-red-700 rounded-lg flex items-center">
-                    <i class="fas fa-exclamation-circle mr-2"></i>
-                    <?= htmlspecialchars($uploadError) ?>
-                </div>
+                    <div class="mb-6 p-4 bg-red-100 border-l-4 border-red-500 text-red-700 rounded-lg flex items-center">
+                        <i class="fas fa-exclamation-circle mr-2"></i>
+                        <?= htmlspecialchars($uploadError) ?>
+                    </div>
                 <?php endif; ?>
 
                 <!-- Profile Card -->
@@ -230,14 +238,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_profile'])) {
                         <div class="md:w-1/3 flex flex-col items-center">
                             <div class="relative mb-4">
                                 <?php if (!empty($profilePicture) && file_exists("../uploads/" . $profilePicture)): ?>
-                                    <img src="../uploads/<?= $profilePicture ?>" 
-                                         class="w-32 h-32 rounded-full object-cover border-2 border-purple-500">
+                                    <img src="../uploads/<?= $profilePicture ?>"
+                                        class="w-32 h-32 rounded-full object-cover border-2 border-purple-500">
                                 <?php else: ?>
                                     <div class="w-32 h-32 rounded-full bg-purple-100 flex items-center justify-center">
                                         <i class="fas fa-user text-4xl text-purple-500"></i>
                                     </div>
                                 <?php endif; ?>
-                                
+
                                 <!-- Upload Button -->
                                 <form method="POST" enctype="multipart/form-data" class="absolute bottom-0 right-0">
                                     <label for="profile-upload" class="cursor-pointer">
@@ -245,11 +253,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_profile'])) {
                                             <i class="fas fa-pencil-alt text-white text-xs"></i>
                                         </div>
                                     </label>
-                                    <input id="profile-upload" type="file" name="profile_picture" class="hidden" 
-                                           accept="image/jpeg, image/png" onchange="this.form.submit()">
+                                    <input id="profile-upload" type="file" name="profile_picture" class="hidden"
+                                        accept="image/jpeg, image/png" onchange="this.form.submit()">
                                 </form>
                             </div>
-                            
+
                             <h3 class="text-xl font-bold text-gray-800 mb-1"><?= htmlspecialchars($userData['username']) ?></h3>
                             <p class="text-sm text-purple-600 mb-4">Kasir</p>
                             <div class="w-full bg-gray-200 h-px my-4"></div>
@@ -257,50 +265,52 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_profile'])) {
                                 Bergabung sejak <?= date('d M Y', strtotime($userData['created_at'])) ?>
                             </p>
                         </div>
-                        
+
                         <!-- Form Section -->
                         <div class="md:w-2/3">
                             <form method="POST" action="">
                                 <div class="space-y-4">
                                     <div>
                                         <label class="block text-sm font-medium text-gray-600 mb-1">Username</label>
-                                        <input 
-                                            type="text" 
-                                            name="username" 
-                                            value="<?= htmlspecialchars($userData['username']) ?>" 
+                                        <input
+                                            type="text"
+                                            name="username"
+                                            value="<?= htmlspecialchars($userData['username']) ?>"
                                             class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none input-field"
-                                            required
-                                        >
+                                            required>
                                     </div>
-                                    
+
                                     <div>
                                         <label class="block text-sm font-medium text-gray-600 mb-1">Email</label>
-                                        <input 
-                                            type="email" 
-                                            name="email" 
-                                            value="<?= htmlspecialchars($userData['email']) ?>" 
+                                        <input
+                                            type="email"
+                                            name="email"
+                                            value="<?= htmlspecialchars($userData['email']) ?>"
                                             class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none input-field"
-                                            required
-                                        >
+                                            required>
                                     </div>
-                                    
+
                                     <div>
                                         <label class="block text-sm font-medium text-gray-600 mb-1">Password Baru</label>
-                                        <input 
-                                            type="password" 
-                                            name="password" 
-                                            placeholder="Kosongkan jika tidak ingin mengubah"
-                                            class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none input-field"
-                                        >
+                                        <div class="relative">
+                                            <input
+                                                type="password"
+                                                name="password"
+                                                id="cashier_new_password"
+                                                placeholder="Kosongkan jika tidak ingin mengubah"
+                                                class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none input-field pr-10">
+                                            <span class="absolute inset-y-0 right-0 flex items-center pr-3 cursor-pointer" onclick="togglePassword('cashier_new_password', this)">
+                                                <i class="far fa-eye text-gray-400"></i>
+                                            </span>
+                                        </div>
                                         <p class="text-xs text-gray-500 mt-1">Minimal 8 karakter</p>
                                     </div>
-                                    
+
                                     <div class="pt-4">
-                                        <button 
-                                            type="submit" 
+                                        <button
+                                            type="submit"
                                             name="update_profile"
-                                            class="bg-purple-600 hover:bg-purple-700 text-white px-6 py-2 rounded-lg flex items-center space-x-2 transition"
-                                        >
+                                            class="bg-purple-600 hover:bg-purple-700 text-white px-6 py-2 rounded-lg flex items-center space-x-2 transition">
                                             <i class="fas fa-save"></i>
                                             <span>Simpan Perubahan</span>
                                         </button>
@@ -310,7 +320,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_profile'])) {
                         </div>
                     </div>
                 </div>
-                
+
                 <!-- Activity Log -->
                 <div class="bg-white rounded-xl shadow-md p-6">
                     <h3 class="text-lg font-semibold text-gray-800 mb-4">Aktivitas Terakhir</h3>
@@ -324,31 +334,31 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_profile'])) {
                                 <p class="text-xs text-gray-500"><?= date('d M Y, H:i') ?></p>
                             </div>
                         </div>
-                        
-                       
-                            
-                        </div>
+
+
+
                     </div>
                 </div>
-            </main>
         </div>
+        </main>
+    </div>
     </div>
 
     <script>
         // Update date and time
         function updateDateTime() {
             const now = new Date();
-            const options = { 
-                weekday: 'long', 
-                year: 'numeric', 
-                month: 'long', 
+            const options = {
+                weekday: 'long',
+                year: 'numeric',
+                month: 'long',
                 day: 'numeric',
                 hour: '2-digit',
                 minute: '2-digit'
             };
             document.getElementById('currentDateTime').textContent = now.toLocaleDateString('id-ID', options);
         }
-        
+
         setInterval(updateDateTime, 1000);
         updateDateTime();
 
@@ -359,6 +369,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_profile'])) {
                 window.location.href = this.getAttribute('href');
             }
         });
+
+        function togglePassword(inputId, el) {
+            const input = document.getElementById(inputId);
+            const icon = el.querySelector('i');
+            if (input.type === 'password') {
+                input.type = 'text';
+                icon.classList.remove('fa-eye');
+                icon.classList.add('fa-eye-slash');
+            } else {
+                input.type = 'password';
+                icon.classList.remove('fa-eye-slash');
+                icon.classList.add('fa-eye');
+            }
+        }
     </script>
 </body>
+
 </html>

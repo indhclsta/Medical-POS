@@ -315,12 +315,7 @@ $recentTransactionsResult = mysqli_query($conn, $recentTransactionsQuery);
                                 </div>
                                 <p class="font-medium text-purple-800">Cetak Laporan</p>
                             </a>
-                            <a href="#" class="bg-purple-100 hover:bg-purple-200 p-4 rounded-lg text-center transition-colors">
-                                <div class="text-purple-600 mb-2">
-                                    <i class="fas fa-bell text-2xl"></i>
-                                </div>
-                                <p class="font-medium text-purple-800">Notifikasi</p>
-                            </a>
+                            
                         </div>
                     </div>
                 </div>
