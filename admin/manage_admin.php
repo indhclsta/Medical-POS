@@ -301,10 +301,7 @@ if ($search !== '') {
                     <i class="fas fa-clipboard-list mr-3"></i>
                     Log Sistem
                 </a>
-                <a href="settings.php" class="flex items-center px-4 py-3 rounded-lg hover:bg-purple-800">
-                    <i class="fas fa-cog mr-3"></i>
-                    Pengaturan
-                </a>
+               
                 <a href="../service/logout.php" class="flex items-center px-4 py-3 rounded-lg hover:bg-purple-800 mt-8 text-red-200">
                     <i class="fas fa-sign-out-alt mr-3"></i>
                     Logout
